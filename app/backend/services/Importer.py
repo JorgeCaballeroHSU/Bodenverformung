@@ -51,6 +51,7 @@ class Importer:
             location = data["location"]
             sample = data["sample"]
             test = data["test"]
+            file_data=data["file_data"]
             measurements = data["measurements"]
 
 
@@ -90,24 +91,49 @@ class Importer:
             sample_id,_=database.insertItemsTable(query=query,values=values)
 
             ##### TEST TABLE #####
+            # defines the query
+            query="""INSERT INTO tests (sample_id, test_type, test_date, initial_height_mm, initial_diameter_mm, young_modulus_kpa,
+            compressive_strength_kpa, failure_strain_pct, operator_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
 
+            # defines the values for the query
+            values=(sample_id, test["test_type"], test["test_date"], test["initial_height_mm"], test["initial_diameter_mm"],
+                    test["young_modulus_kpa"], test["compressive_strength_kpa"], test["failure_strain_pct"], test["operator_name"])
             
+            # executes the query and gets the last id
+            test_id,_=database.insertItemsTable(query=query,values=values)
 
+            ##### FILES TABLE #####
+            # defines the query
+            query= """INSERT INTO files (test_id, filename, filepath, sha256, file_size, import_date) VALUES (?, ?, ?, ?, ?, ?)"""
 
+            # defines the values of the query
+            values = (test_id, file_data["filename"], file_data["filepath"], file_data["sha256"], file_data["file_size"],
+                      file_data["import_date"])
+            
+            # executes query and gets the last id
+            _,_=database.insertItemsTable(query=query,values=values)
 
+            ##### FILES TABLE #####
+            # defines the query
+            query="""INSERT INTO measurements (test_id, time_s, force_kn, displacement_mm, strain_pct, stress_kpa,
+               deviator_stress_kpa, pore_pressure_kpa, effective_stress_kpa) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+            
+            # defines the values of the query and insert them in the database
+            for row in measurements:
 
-        except:
+                values = (test_id, row["time_s"], row["force_kn"], row["displacement_mm"], row["strain_pct"], 
+                          row["stress_kpa"], row["deviator_stress_kpa"], row["pore_pressure_kpa"],row["effective_stress_kpa"])
+
+                # inserts values in the database
+                self.db.insertItemsTable(query=query, values=values)
+
+        # catches erros
+        except Exception as e:
+
+            # informs about the error
+            print("An error has occurred: {}".format(e))
 
         finally:
-
+            
+            # closes the database
             database.closeConnection()
-
-
-
-
-        # TODO:
-        # Insert project
-        # Insert location
-        # Insert sample
-        # Insert test
-        # Insert measurements

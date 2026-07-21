@@ -73,8 +73,6 @@ class Database:
             print(f'Error fetching data: {e}')
             return []
 
-        
-    
     # module to update an existing element
     def updateItem(self, updateStatement:str, Values:tuple)->tuple:
 
@@ -104,7 +102,6 @@ class Database:
             # gets the last rowID and the row count
             return (-1,-1)
 
-
     # module to open connection to the database
     def openConnection(self)->None:
 
@@ -132,6 +129,7 @@ class Database:
         # return nothing
         return None
     
+    # fetches the last ID of the table
     def fetchLastID(self, tableName: str, idColumn: str):
         try:
             self.openConnection()

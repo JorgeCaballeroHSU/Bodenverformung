@@ -3,13 +3,28 @@ from app.backend.services.FileClassifier import FileClassifier
 from app.backend.services.ExcelReader import ExcelReader
 from app.backend.services.Parsers import *
 from app.backend.database.database import Database
+from pathlib import Path
+from datetime import datetime
+import hashlib
+
+def calculate_sha256(filepath: str) -> str:
+
+    sha256 = hashlib.sha256()
+
+    with open(filepath, "rb") as file:
+
+        while chunk := file.read(8192):
+            sha256.update(chunk)
+
+    return sha256.hexdigest()
 
 # coordinates the processing of the files
-class Importer:
-
-    def __init__(self, db):
-
-        self.db = db
+class Importer():
+    
+    # constructor
+    def __init__(self):
+        
+        self.database = Database()
 
     def import_file(self, file_path):
 
@@ -25,24 +40,30 @@ class Importer:
             parser = TriaxParser(workbook=workbook)
 
         else:
-            raise Exception(
-                "Unknown file type"
+            
+            raise ValueError(
+                f"Unknown file type: {file_path}"
             )
+
+        file_data = {
+            "filename": Path(file_path).name,
+            "filepath": str(file_path),
+            "sha256": calculate_sha256(file_path),
+            "file_size": Path(file_path).stat().st_size,
+            "import_date": datetime.now().isoformat()
+        }
 
         # parses the data
         data = parser.parse()
 
         # saves the data in the database
-        self.save_to_database(data)
+        self.save_to_database(data, file_data)
 
-    def save_to_database(self, data: dict) -> None:
+    def save_to_database(self, data: dict, file_data:dict) -> dict:
         """
         Insert parsed information into the database.
         """
-        
-        # initializes a database object and opens connection to database.
-        database=Database()
-
+    
         # tries to open connection and execute query
         try:
 
@@ -51,12 +72,10 @@ class Importer:
             location = data["location"]
             sample = data["sample"]
             test = data["test"]
-            file_data=data["file_data"]
             measurements = data["measurements"]
 
-
             # opens connection
-            database.openConnection()
+            self.database.openConnection()
 
             ##### PROJECTS TABLE #####
             # defines query
@@ -66,7 +85,7 @@ class Importer:
             values = (project["project_number"], project["project_title"], project["description"], project["created_at"])
 
             # excutes query and gets the last project_id from the insert
-            project_id,_=database.insertItemsTable(query=query, values=values)
+            project_id,_=self.database.insertItemsTable(query=query, values=values)
 
             ##### LOCATIONS TABLE #####
             # defines query
@@ -76,7 +95,7 @@ class Importer:
             values= (project_id, location["location_name"], location["x_coordinate"], location["y_coordinate"])
 
             # executes query and geets the last id of the insertion
-            location_id,_=database.insertItemsTable(query=query,values=values)
+            location_id,_=self.database.insertItemsTable(query=query,values=values)
 
             ##### SAMPLE TABLE #####
             # defines the query to insert in samples table
@@ -88,7 +107,7 @@ class Importer:
                       sample["density_kg_m3"])
             
             # exceutes the query and gets the last id
-            sample_id,_=database.insertItemsTable(query=query,values=values)
+            sample_id,_=self.database.insertItemsTable(query=query,values=values)
 
             ##### TEST TABLE #####
             # defines the query
@@ -100,7 +119,7 @@ class Importer:
                     test["young_modulus_kpa"], test["compressive_strength_kpa"], test["failure_strain_pct"], test["operator_name"])
             
             # executes the query and gets the last id
-            test_id,_=database.insertItemsTable(query=query,values=values)
+            test_id,_=self.database.insertItemsTable(query=query,values=values)
 
             ##### FILES TABLE #####
             # defines the query
@@ -111,9 +130,9 @@ class Importer:
                       file_data["import_date"])
             
             # executes query and gets the last id
-            _,_=database.insertItemsTable(query=query,values=values)
+            _,_=self.database.insertItemsTable(query=query,values=values)
 
-            ##### FILES TABLE #####
+            ##### MEASUREMENTS TABLE #####
             # defines the query
             query="""INSERT INTO measurements (test_id, time_s, force_kn, displacement_mm, strain_pct, stress_kpa,
                deviator_stress_kpa, pore_pressure_kpa, effective_stress_kpa) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
@@ -125,10 +144,17 @@ class Importer:
                           row["stress_kpa"], row["deviator_stress_kpa"], row["pore_pressure_kpa"],row["effective_stress_kpa"])
 
                 # inserts values in the database
-                self.db.insertItemsTable(query=query, values=values)
+                self.database.insertItemsTable(query=query, values=values)
+
+            # returns statistics            
+            return {"project_id": project_id, "location_id": location_id, "sample_id": sample_id, 
+                    "test_id": test_id, "measurements": len(measurements)}
 
         # catches erros
         except Exception as e:
+
+            # rolles back db to past state
+            self.database.conn.rollback()
 
             # informs about the error
             print("An error has occurred: {}".format(e))
@@ -136,4 +162,4 @@ class Importer:
         finally:
             
             # closes the database
-            database.closeConnection()
+            self.database.closeConnection()

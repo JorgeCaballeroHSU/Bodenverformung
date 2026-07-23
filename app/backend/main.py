@@ -11,6 +11,9 @@
 
 # Imports required libraries
 from database.database import *
+from openpyxl import load_workbook
+from services.Parsers import EinaxParser
+from services.Importer import Importer
 
 # defines the main function of the application
 def main() -> None:
@@ -20,6 +23,19 @@ def main() -> None:
 
     # creates database according to the defined schema.
     Schema()
+
+    # defines variable with the filepath
+    path_file="/mnt/r/institut/Labor/Projekte/BBI/2018-080_BBI-FBQ-Hinterlandanbindung/5_Auftrag_2018_080/Einax_2018-080-5_BBI-FBQ_BW1-6-B102-UP2_19m_Mg.xlsx"
+
+    # inserts the information in the database
+    # creates an instance of importer that is used to add the information to the database
+    importer=Importer()
+
+    # inserts data in the database
+    importer.import_file(file_path=path_file)
+
+
+
 
 
 

@@ -1,8 +1,8 @@
 # imports required modules/classes
-from app.backend.services.FileClassifier import FileClassifier
-from app.backend.services.ExcelReader import ExcelReader
-from app.backend.services.Parsers import *
-from app.backend.database.database import Database
+from services.FileClassifier import FileClassifier
+from services.ExcelReader import ExcelReader
+from services.Parsers import *
+from database.database import Database
 from pathlib import Path
 from datetime import datetime
 import hashlib
@@ -89,23 +89,22 @@ class Importer():
 
             ##### LOCATIONS TABLE #####
             # defines query
-            query="""INSERT INTO locations (project_id, location_name, x_coordinate, y_coordinate) VALUES (?, ?, ?, ?)"""
+            query="""INSERT INTO locations (project_id, location_name, depth_from_m, depth_to_m) VALUES (?, ?, ?, ?)"""
 
             # defines the values for the query
-            values= (project_id, location["location_name"], location["x_coordinate"], location["y_coordinate"])
+            values= (project_id, location["location_name"], location["depth_from_m"], location["depth_to_m"])
 
             # executes query and geets the last id of the insertion
             location_id,_=self.database.insertItemsTable(query=query,values=values)
 
             ##### SAMPLE TABLE #####
             # defines the query to insert in samples table
-            query = """INSERT INTO samples (location_id, material, depth_from_m, depth_to_m, water_content, density_kg_m3) 
-            VALUES (?, ?, ?, ?, ?, ?)"""
+            query = """INSERT INTO samples (location_id, material, water_content, density_kg_m3, initial_mass_kg)
+            VALUES (?, ?, ?, ?, ?)"""
 
             # defines the values for the query
-            values = (location_id, sample["material"], sample["depth_from_m"], sample["depth_to_m"], sample["water_content"],
-                      sample["density_kg_m3"])
-            
+            values = (location_id, sample["material"], sample["water_content"], sample["density_kg_m3"], sample["initial_mass_kg"])
+
             # exceutes the query and gets the last id
             sample_id,_=self.database.insertItemsTable(query=query,values=values)
 
@@ -134,14 +133,14 @@ class Importer():
 
             ##### MEASUREMENTS TABLE #####
             # defines the query
-            query="""INSERT INTO measurements (test_id, time_s, force_kn, displacement_mm, strain_pct, stress_kpa,
-               deviator_stress_kpa, pore_pressure_kpa, effective_stress_kpa) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+            query="""INSERT INTO measurements (test_id, time_s, force_kn, displacement_mm, sample_height_mm, strain_ratio, 
+            strain_pct, stress_kpa, strain_at_max_stress_pct) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
             
             # defines the values of the query and insert them in the database
             for row in measurements:
 
-                values = (test_id, row["time_s"], row["force_kn"], row["displacement_mm"], row["strain_pct"], 
-                          row["stress_kpa"], row["deviator_stress_kpa"], row["pore_pressure_kpa"],row["effective_stress_kpa"])
+                values = (test_id, row["time_s"], row["force_kn"], row["displacement_mm"], row["sample_height_mm"], row["strain_ratio"],
+                          row["strain_pct"], row["stress_kpa"], row["strain_at_max_stress_pct"])
 
                 # inserts values in the database
                 self.database.insertItemsTable(query=query, values=values)

@@ -8,15 +8,15 @@ from sqlite3 import Error
 class Database:
     
     # Class' properties
-    _filePath:str=''
+    filePath:str=''
     
-    def __init__(self, dbFile: str="/home/Bodenverformung/storage/database.db")->None:
+    def __init__(self, dbFile: str="/home/Bodenverformung/app/backend/storage/database.db")->None:
         """ create a database connection to the SQLite database specified by db_file
         :param db_file: database file
         :return: Connection object or None
         """
         # stores the path file where the database is located
-        self._filePath=dbFile
+        self.filePath=dbFile
 
         # makes conn None
         self.conn = None
@@ -107,7 +107,7 @@ class Database:
 
         # attempt to connect to the database using the provided file name and print a success message if the connection is successful
         try:
-            self.conn = sqlite3.connect(self._filePath)
+            self.conn = sqlite3.connect(self.filePath)
             self.conn.execute("PRAGMA foreign_keys = ON;")
             self.conn.row_factory = sqlite3.Row
 
@@ -176,7 +176,7 @@ class Schema(Database):
     # creates all the tables necessary for running this project. The database table relations can be seen in the document
     # Datenbak - Class Diagram.png
      
-    def __init__(self, dbFile: str)->None:
+    def __init__(self, dbFile: str="/home/Bodenverformung/app/backend/storage/database.db")->None:
         super().__init__(dbFile)
 
         # opens the connection
@@ -230,8 +230,8 @@ class Schema(Database):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             project_id INTEGER NOT NULL,
             location_name TEXT,
-            x_coordinate REAL,
-            y_coordinate REAL,
+            depth_from_m REAL,
+            depth_to_m REAL,
             FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
         );"""
                 
@@ -239,10 +239,9 @@ class Schema(Database):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             location_id INTEGER NOT NULL,
             material TEXT,
-            depth_from_m REAL,
-            depth_to_m REAL,
             water_content REAL,
             density_kg_m3 REAL,
+            initial_mass_kg REAL,
             FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE
         );"""
 
@@ -266,13 +265,12 @@ class Schema(Database):
             time_s REAL,
             force_kn REAL,
             displacement_mm REAL,
+            sample_height_mm REAL,
+            strain_ratio REAL,
             strain_pct REAL,
             stress_kpa REAL,
-            deviator_stress_kpa REAL,
-            pore_pressure_kpa REAL,
-            effective_stress_kpa REAL,
-            FOREIGN KEY (test_id) REFERENCES tests(id) ON DELETE CASCADE
-        );"""
+            strain_at_max_stress_pct REAL,
+            FOREIGN KEY (test_id) REFERENCES tests(id) ON DELETE CASCADE);"""
 
         files="""CREATE TABLE IF NOT EXISTS files (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

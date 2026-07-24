@@ -17,124 +17,81 @@ class BaseModel(ABC):
 
     @abstractmethod
     def build(self):
-        """
-        Build the model architecture.
-        """
+        """Build the model architecture."""
         pass
 
-    def fit(
-        self,
-        X_train,
-        y_train,
-        **kwargs
-    ):
-        """
-        Train model.
-        """
+    def fit(self, X_train, y_train, **kwargs):
+        """Train model."""
 
-        self.train_history = self.model.fit(
-            X_train,
-            y_train,
-            **kwargs
-        )
+        # trains the model
+        self.train_history = self.model.fit( X_train, y_train, **kwargs)
 
+        # returns train history of the model
         return self.train_history
 
     def predict(self, X):
-        """
-        Predict values.
-        """
+        """Predict values."""
 
+        # provides the results of the prediction
         return self.model.predict(X)
 
-    def evaluate(
-        self,
-        X_test,
-        y_test,
-        **kwargs
-    ):
-        """
-        Evaluate model.
-        """
+    def evaluate(self, X_test, y_test, **kwargs):
+        """Evaluate model."""
 
-        return self.model.evaluate(
-            X_test,
-            y_test,
-            **kwargs
-        )
+        # returns model evaluation results
+        return self.model.evaluate(X_test, y_test, **kwargs)
 
     def summary(self):
-        """
-        Show model summary.
-        """
+        """Show model summary."""
 
+        # returns summary of the model
         return self.model.summary()
 
     def save(self, filepath):
-        """
-        Save model.
-        """
+        """Save model."""
 
+        # saves the model in the indicated path
         self.model.save(filepath)
 
     def load_weights(self, filepath):
-        """
-        Load model weights.
-        """
+        """Load model weights."""
 
+        # loads the model from the indicated path
         self.model.load_weights(filepath)
 
 
 class LSTMForecaster(BaseModel):
 
-    def __init__(
-        self,
-        input_steps: int,
-        n_features: int,
-        units: int = 64,
-        dropout: float = 0.2,
-        learning_rate: float = 0.001
-    ):
+    def __init__(self, input_steps: int, n_features: int, units: int = 64, dropout: float = 0.2, learning_rate: float = 0.001):
 
         super().__init__()
 
+        # defines hyperparameters of the model
         self.input_steps = input_steps
         self.n_features = n_features
         self.units = units
         self.dropout = dropout
         self.learning_rate = learning_rate
 
+        # builds the model
         self.build()
 
     def build(self):
 
+        # defines the model architecture
         self.model = Sequential([
             LSTM(
                 units=self.units,
-                input_shape=(
-                    self.input_steps,
-                    self.n_features
-                )
+                input_shape=(self.input_steps,self.n_features)
             ),
-
-            Dropout(
-                self.dropout
-            ),
-
-            Dense(
-                32,
-                activation="relu"
-            ),
-
-            Dense(
-                1
-            )
+            Dropout(self.dropout),
+            Dense(32, activation="relu"),
+            Dense(1)
         ])
 
+        # compiles the model
         self.model.compile(
-            optimizer=Adam(
-                learning_rate=self.learning_rate
-            ),
+            optimizer=Adam(learning_rate=self.learning_rate),
             loss="mse",
             metrics=["mae"]
         )
@@ -142,61 +99,35 @@ class LSTMForecaster(BaseModel):
 
 class StackedLSTMForecaster(BaseModel):
 
-    def __init__(
-        self,
-        input_steps: int,
-        n_features: int,
-        units: int = 64,
-        dropout: float = 0.2,
-        learning_rate: float = 0.001
-    ):
+    def __init__(self, input_steps: int, n_features: int, units: int = 64, dropout: float = 0.2, learning_rate: float = 0.001):
 
         super().__init__()
 
+        # defines the hyperparameters of the model
         self.input_steps = input_steps
         self.n_features = n_features
         self.units = units
         self.dropout = dropout
         self.learning_rate = learning_rate
 
+        # builds the model
         self.build()
 
     def build(self):
 
+        # defines the architecture of the model
         self.model = Sequential([
-
-            # First LSTM layer
-            LSTM(
+            
+            LSTM(# First LSTM layer
                 self.units,
                 return_sequences=True,
-                input_shape=(
-                    self.input_steps,
-                    self.n_features
-                )
-            ),
-
+                input_shape=(self.input_steps,self.n_features)            ),
             Dropout(self.dropout),
-
-            # Second LSTM layer
-            LSTM(
-                self.units,
-                return_sequences=True
-            ),
-
+            LSTM(self.units, return_sequences=True),# Second LSTM layer
             Dropout(self.dropout),
-
-            # Third LSTM layer
-            LSTM(
-                self.units
-            ),
-
+            LSTM(self.units),# Third LSTM layer
             Dropout(self.dropout),
-
-            Dense(
-                32,
-                activation="relu"
-            ),
-
+            Dense(32, activation="relu"),
             Dense(1)
         ])
 

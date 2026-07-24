@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Import</title>
+
+    <link rel="stylesheet" href="frontend/style/style-db.css">
+    <link rel="stylesheet" href="frontend/style/style.css">
+
+
+</head>
+
+<body>
+
+<header>
+
+    <img src="frontend/images/Geotechnical Department.png">
+
+    <h1>Deformation Prediction</h1>
+
+    <img src="frontend/images/Uni-Logo.jpeg">
+
+</header>
+
+<div class="explorer-container">
+
+    <h2>Select Folder</h2>
+
+    <div class="folder-selection">
+
+        <input
+            type="file"
+            id="folderPicker"
+            webkitdirectory
+            directory
+            multiple>
+
+    </div>
+
+    <br>
+
+    <div id="folderInfo">
+
+        <p>No folder selected.</p>
+
+    </div>
+
+    <br>
+
+    <table id="fileTable">
+
+        <thead>
+            <tr>
+                <th>Select</th>
+                <th>File Name</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+
+        <tbody id="fileBody">
+
+            <!-- Populated by database.js -->
+
+        </tbody>
+
+    </table>
+
+    <br>
+
+    <button id="uploadButton" onclick="uploadSelectedFiles()">
+        Import Selected Files
+    </button>
+
+</div>
+
+<footer id="footer">
+
+    <div class="footer-left">
+        <strong>Supervisor</strong><br>
+        Sascha Henke<br>
+        Univ.-Prof. Dr.-Ing. habil.<br>
+        📧 sascha.henke@hsu-hh.de<br>
+        📞 +49 40 6541-3351
+    </div>
+
+    <div class="footer-center">
+        Vorhersagbarkeit von Bodenverformungen
+    </div>
+
+    <div class="footer-right">
+        <strong>Research Associate</strong><br>
+        Jorge Enrique Caballero Castillo<br>
+        M.Sc. AI, M.Sc. Geology,<br>
+        B.Sc. Computer Science,<br>
+        B.Sc. Geotechnical Engineering<br>
+        📧 caballej@hsu-hh.de<br>
+        📞 +49 40 6541-2927
+    </div>
+
+</footer>
+
+<script src="/frontend/javascript/script-db.js"></script>
+
+</body>
+</html>

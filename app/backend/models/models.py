@@ -6,13 +6,10 @@ from tensorflow.keras.layers import (Input,Dense,Dropout,LSTM,GRU, Bidirectional
 from tensorflow.keras.optimizers import Adam
 from neuralforecast.models import TFT
 
-
 class BaseModel(ABC):
 
     def __init__(self):
-
         self.model = None
-
         self.train_history = None
 
     @abstractmethod
@@ -162,8 +159,7 @@ class BiLSTMForecaster(BaseModel):
             Bidirectional(LSTM(self.units), input_shape=(self.input_steps, self.n_features)),
             Dropout(self.dropout),
             Dense(32, activation="relu"),
-            Dense(1)
-        ])
+            Dense(1)])
 
         # compiles the model
         self.model.compile(optimizer=Adam(learning_rate=self.learning_rate), loss="mse", metrics=["mae"])

@@ -1,0 +1,646 @@
+import numpy as np
+from abc import ABC, abstractmethod
+from tensorflow.keras.models import (Sequential,Model)
+from tensorflow.keras.layers import (Input,Dense,Dropout,LSTM,GRU, Bidirectional, RepeatVector, TimeDistributed, Attention,
+                                     Concatenate, Conv1D, MaxPooling1D)
+from tensorflow.keras.optimizers import Adam
+from neuralforecast.models import TFT
+
+
+class BaseModel(ABC):
+
+    def __init__(self):
+
+        self.model = None
+
+        self.train_history = None
+
+    @abstractmethod
+    def build(self):
+        """
+        Build the model architecture.
+        """
+        pass
+
+    def fit(
+        self,
+        X_train,
+        y_train,
+        **kwargs
+    ):
+        """
+        Train model.
+        """
+
+        self.train_history = self.model.fit(
+            X_train,
+            y_train,
+            **kwargs
+        )
+
+        return self.train_history
+
+    def predict(self, X):
+        """
+        Predict values.
+        """
+
+        return self.model.predict(X)
+
+    def evaluate(
+        self,
+        X_test,
+        y_test,
+        **kwargs
+    ):
+        """
+        Evaluate model.
+        """
+
+        return self.model.evaluate(
+            X_test,
+            y_test,
+            **kwargs
+        )
+
+    def summary(self):
+        """
+        Show model summary.
+        """
+
+        return self.model.summary()
+
+    def save(self, filepath):
+        """
+        Save model.
+        """
+
+        self.model.save(filepath)
+
+    def load_weights(self, filepath):
+        """
+        Load model weights.
+        """
+
+        self.model.load_weights(filepath)
+
+
+class LSTMForecaster(BaseModel):
+
+    def __init__(
+        self,
+        input_steps: int,
+        n_features: int,
+        units: int = 64,
+        dropout: float = 0.2,
+        learning_rate: float = 0.001
+    ):
+
+        super().__init__()
+
+        self.input_steps = input_steps
+        self.n_features = n_features
+        self.units = units
+        self.dropout = dropout
+        self.learning_rate = learning_rate
+
+        self.build()
+
+    def build(self):
+
+        self.model = Sequential([
+            LSTM(
+                units=self.units,
+                input_shape=(
+                    self.input_steps,
+                    self.n_features
+                )
+            ),
+
+            Dropout(
+                self.dropout
+            ),
+
+            Dense(
+                32,
+                activation="relu"
+            ),
+
+            Dense(
+                1
+            )
+        ])
+
+        self.model.compile(
+            optimizer=Adam(
+                learning_rate=self.learning_rate
+            ),
+            loss="mse",
+            metrics=["mae"]
+        )
+
+
+class StackedLSTMForecaster(BaseModel):
+
+    def __init__(
+        self,
+        input_steps: int,
+        n_features: int,
+        units: int = 64,
+        dropout: float = 0.2,
+        learning_rate: float = 0.001
+    ):
+
+        super().__init__()
+
+        self.input_steps = input_steps
+        self.n_features = n_features
+        self.units = units
+        self.dropout = dropout
+        self.learning_rate = learning_rate
+
+        self.build()
+
+    def build(self):
+
+        self.model = Sequential([
+
+            # First LSTM layer
+            LSTM(
+                self.units,
+                return_sequences=True,
+                input_shape=(
+                    self.input_steps,
+                    self.n_features
+                )
+            ),
+
+            Dropout(self.dropout),
+
+            # Second LSTM layer
+            LSTM(
+                self.units,
+                return_sequences=True
+            ),
+
+            Dropout(self.dropout),
+
+            # Third LSTM layer
+            LSTM(
+                self.units
+            ),
+
+            Dropout(self.dropout),
+
+            Dense(
+                32,
+                activation="relu"
+            ),
+
+            Dense(1)
+        ])
+
+        self.model.compile(
+            optimizer=Adam(
+                learning_rate=self.learning_rate
+            ),
+            loss="mse",
+            metrics=["mae"]
+        )
+
+class BiLSTMForecaster(BaseModel):
+
+    def __init__(
+        self,
+        input_steps: int,
+        n_features: int,
+        units: int = 64,
+        dropout: float = 0.2,
+        learning_rate: float = 0.001
+    ):
+
+        super().__init__()
+
+        self.input_steps = input_steps
+        self.n_features = n_features
+        self.units = units
+        self.dropout = dropout
+        self.learning_rate = learning_rate
+
+        self.build()
+
+    def build(self):
+
+        self.model = Sequential([
+
+            Bidirectional(
+                LSTM(
+                    self.units
+                ),
+                input_shape=(
+                    self.input_steps,
+                    self.n_features
+                )
+            ),
+
+            Dropout(
+                self.dropout
+            ),
+
+            Dense(
+                32,
+                activation="relu"
+            ),
+
+            Dense(1)
+        ])
+
+        self.model.compile(
+            optimizer=Adam(
+                learning_rate=self.learning_rate
+            ),
+            loss="mse",
+            metrics=["mae"]
+        )
+
+
+class EncoderDecoderLSTMForecaster(BaseModel):
+
+    def __init__(
+        self,
+        input_steps: int,
+        output_steps: int,
+        n_features: int,
+        units: int = 64,
+        dropout: float = 0.2,
+        learning_rate: float = 0.001
+    ):
+
+        super().__init__()
+
+        self.input_steps = input_steps
+        self.output_steps = output_steps
+        self.n_features = n_features
+        self.units = units
+        self.dropout = dropout
+        self.learning_rate = learning_rate
+
+        self.build()
+
+    def build(self):
+
+        self.model = Sequential([
+
+            # Encoder
+            LSTM(
+                self.units,
+                input_shape=(
+                    self.input_steps,
+                    self.n_features
+                )
+            ),
+
+            Dropout(
+                self.dropout
+            ),
+
+            # Repeat context vector
+            RepeatVector(
+                self.output_steps
+            ),
+
+            # Decoder
+            LSTM(
+                self.units,
+                return_sequences=True
+            ),
+
+            Dropout(
+                self.dropout
+            ),
+
+            # Output layer
+            TimeDistributed(
+                Dense(1)
+            )
+        ])
+
+        self.model.compile(
+            optimizer=Adam(
+                learning_rate=self.learning_rate
+            ),
+            loss="mse",
+            metrics=["mae"]
+        )
+
+class Seq2SeqAttentionLSTMForecaster(BaseModel):
+
+    def __init__(
+        self,
+        input_steps: int,
+        output_steps: int,
+        n_features: int,
+        units: int = 64,
+        learning_rate: float = 0.001
+    ):
+
+        super().__init__()
+
+        self.input_steps = input_steps
+        self.output_steps = output_steps
+        self.n_features = n_features
+        self.units = units
+        self.learning_rate = learning_rate
+
+        self.build()
+
+    def build(self):
+
+        # Encoder
+        encoder_inputs = Input(
+            shape=(
+                self.input_steps,
+                self.n_features
+            )
+        )
+
+        encoder_outputs, state_h, state_c = LSTM(
+            self.units,
+            return_sequences=True,
+            return_state=True
+        )(encoder_inputs)
+
+        # Decoder Input
+        decoder_inputs = Input(
+            shape=(
+                self.output_steps,
+                1
+            )
+        )
+
+        decoder_outputs = LSTM(
+            self.units,
+            return_sequences=True
+        )(
+            decoder_inputs,
+            initial_state=[state_h, state_c]
+        )
+
+        # Attention Layer
+        attention = Attention()(
+            [decoder_outputs, encoder_outputs]
+        )
+
+        # Combine Decoder and Attention
+        decoder_combined = Concatenate()(
+            [decoder_outputs, attention]
+        )
+
+        outputs = TimeDistributed(
+            Dense(1)
+        )(decoder_combined)
+
+        self.model = Model(
+            inputs=[
+                encoder_inputs,
+                decoder_inputs
+            ],
+            outputs=outputs
+        )
+
+        self.model.compile(
+            optimizer=Adam(
+                learning_rate=self.learning_rate
+            ),
+            loss="mse",
+            metrics=["mae"]
+        )
+class CNNLSTMForecaster(BaseModel):
+
+    def __init__(
+        self,
+        input_steps: int,
+        n_features: int,
+        filters: int = 64,
+        kernel_size: int = 3,
+        units: int = 64,
+        dropout: float = 0.2,
+        learning_rate: float = 0.001
+    ):
+
+        super().__init__()
+
+        self.input_steps = input_steps
+        self.n_features = n_features
+        self.filters = filters
+        self.kernel_size = kernel_size
+        self.units = units
+        self.dropout = dropout
+        self.learning_rate = learning_rate
+
+        self.build()
+
+    def build(self):
+
+        self.model = Sequential([
+
+            Conv1D(
+                filters=self.filters,
+                kernel_size=self.kernel_size,
+                activation="relu",
+                input_shape=(
+                    self.input_steps,
+                    self.n_features
+                )
+            ),
+
+            MaxPooling1D(
+                pool_size=2
+            ),
+
+            LSTM(
+                self.units
+            ),
+
+            Dropout(
+                self.dropout
+            ),
+
+            Dense(
+                32,
+                activation="relu"
+            ),
+
+            Dense(1)
+        ])
+
+        self.model.compile(
+            optimizer=Adam(
+                learning_rate=self.learning_rate
+            ),
+            loss="mse",
+            metrics=["mae"]
+        )
+
+class DeepARForecaster(BaseModel):
+
+    def __init__(
+        self,
+        input_steps: int,
+        n_features: int,
+        units: int = 64,
+        dropout: float = 0.2,
+        learning_rate: float = 0.001
+    ):
+
+        super().__init__()
+
+        self.input_steps = input_steps
+        self.n_features = n_features
+        self.units = units
+        self.dropout = dropout
+        self.learning_rate = learning_rate
+
+        self.build()
+
+    def build(self):
+
+        self.model = Sequential([
+
+            LSTM(
+                self.units,
+                input_shape=(
+                    self.input_steps,
+                    self.n_features
+                )
+            ),
+
+            Dropout(
+                self.dropout
+            ),
+
+            Dense(
+                32,
+                activation="relu"
+            ),
+
+            # mean forecast
+            Dense(1)
+        ])
+
+        self.model.compile(
+            optimizer=Adam(
+                learning_rate=self.learning_rate
+            ),
+            loss="mse",
+            metrics=["mae"]
+        )
+
+class TFTForecaster(BaseModel):
+
+    def __init__(
+        self,
+        horizon: int,
+        input_size: int,
+        hidden_size: int = 64
+    ):
+
+        super().__init__()
+
+        self.horizon = horizon
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        self.build()
+
+    def build(self):
+
+        self.model = TFT(
+            h=self.horizon,
+            input_size=self.input_size,
+            hidden_size=self.hidden_size,
+            learning_rate=1e-3,
+            max_steps=1000
+        )
+
+class XLSTMForecaster(BaseModel):
+
+    def __init__(
+        self,
+        input_steps: int,
+        n_features: int,
+        hidden_size: int = 64,
+        num_layers: int = 2
+    ):
+
+        super().__init__()
+
+        self.input_steps = input_steps
+        self.n_features = n_features
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+
+        self.build()
+
+    def build(self):
+        """
+        Build xLSTM architecture.
+        """
+
+        # TODO:
+        # instantiate xLSTM model here
+
+        pass
+
+class GRUForecaster(BaseModel):
+
+    def __init__(
+        self,
+        input_steps: int,
+        n_features: int,
+        units: int = 64,
+        dropout: float = 0.2,
+        learning_rate: float = 0.001
+    ):
+
+        super().__init__()
+
+        self.input_steps = input_steps
+        self.n_features = n_features
+        self.units = units
+        self.dropout = dropout
+        self.learning_rate = learning_rate
+
+        self.build()
+
+    def build(self):
+
+        self.model = Sequential([
+
+            GRU(
+                units=self.units,
+                input_shape=(
+                    self.input_steps,
+                    self.n_features
+                )
+            ),
+
+            Dropout(
+                self.dropout
+            ),
+
+            Dense(
+                32,
+                activation="relu"
+            ),
+
+            Dense(1)
+        ])
+
+        self.model.compile(
+            optimizer=Adam(
+                learning_rate=self.learning_rate
+            ),
+            loss="mse",
+            metrics=["mae"]
+        )

@@ -277,7 +277,7 @@ class Schema(Database):
             test_id INTEGER NOT NULL,
             filename TEXT,
             filepath TEXT,
-            sha256 TEXT,
+            sha256 TEXT UNIQUE,
             file_size INTEGER,
             import_date TEXT,
             FOREIGN KEY (test_id) REFERENCES tests(id) ON DELETE CASCADE

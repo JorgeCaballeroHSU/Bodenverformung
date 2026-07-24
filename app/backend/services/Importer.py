@@ -53,11 +53,27 @@ class Importer():
             "import_date": datetime.now().isoformat()
         }
 
-        # parses the data
-        data = parser.parse()
+        # checks if the file was already processed
+        # defines statement to select ID's from table files
+        query = """SELECT id FROM files WHERE sha256 = ?"""
 
-        # saves the data in the database
-        self.save_to_database(data, file_data)
+        # gets a list of ids that match the query
+        result = self.database.getItemsTable(query=query, values=(file_data["sha256"],))
+
+        # defines what to do if the file was already processed
+        if result:
+
+            # reports
+            print("File already imported.")
+
+        # procceds with the rest of the process
+        else:
+
+            # parses the data
+            data = parser.parse()
+
+            # saves the data in the database
+            self.save_to_database(data, file_data)
 
     def save_to_database(self, data: dict, file_data:dict) -> dict:
         """
@@ -139,8 +155,9 @@ class Importer():
             # defines the values of the query and insert them in the database
             for row in measurements:
 
-                values = (test_id, row["time_s"], row["force_kn"], row["displacement_mm"], row["sample_height_mm"], row["strain_ratio"],
-                          row["strain_pct"], row["stress_kpa"], row["strain_at_max_stress_pct"])
+                values = values = (int(test_id), float(row["time_s"]), float(row["force_kn"]), float(row["displacement_mm"]),
+                                    float(row["sample_height_mm"]), float(row["strain_ratio"]), float(row["strain_pct"]),
+                                    float(row["stress_kpa"]), float(row["strain_at_max_stress_pct"]))
 
                 # inserts values in the database
                 self.database.insertItemsTable(query=query, values=values)

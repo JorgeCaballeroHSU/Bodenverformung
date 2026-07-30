@@ -1,17 +1,20 @@
 # Imports required libraries
-from fastapi import FastAPI, Request, Body
+from fastapi import FastAPI, Request, Body, UploadFile, File
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from tempfile import NamedTemporaryFile
 
 from database.database import *
 from services.Importer import Importer
 from pathlib import Path
+import os
 
-# Create database according to defined schema
+
+# Creates database according to defined schema
 Schema()
 
-# Create FastAPI application
+# Creates FastAPI application
 app = FastAPI()
 
 # defines directories base and front end directory
@@ -79,35 +82,57 @@ async def check_files(data: dict = Body(...)):
         "uploaded": uploaded_files
     }
 
+from fastapi import Request
 
 @app.post("/api/upload-files")
-async def upload_files(data: dict = Body(...)):
+async def upload_files(request: Request):
 
-    files = data.get("files", [])
+    form = await request.form()
 
-    importer = Importer()
+    print("FORM CONTENTS:")
+    print(form)
 
-    imported = []
-    failed = []
+    return {"ok": True}
 
-    for file_path in files:
+# @app.post("/api/upload-files")
+# async def upload_files(files: list[UploadFile] = File(...)):
 
-        try:
+#     # creates an Importer object to handle the importation of the files
+#     importer=Importer()
 
-            importer.import_file(file_path)
+#     # initializes variables imported and failed to append according to the names of the variables
+#     imported=[]
+#     failed=[]
 
-            imported.append(file_path)
+#     for uploaded_file in files:
 
-        except Exception as e:
+#         temp_path=None
 
-            failed.append({
-                "file": file_path,
-                "error": str(e)
-            })
+#         try:
 
-    return {
-        "imported": imported,
-        "failed": failed,
-        "imported_count": len(imported),
-        "failed_count": len(failed)
-    }
+#             with NamedTemporaryFile(delete=False, suffix=".xlsx" ) as tmp:
+
+#                 content = await uploaded_file.read()
+#                 tmp.write(content)
+
+#                 temp_path = Path(tmp.name)
+
+#             importer.import_file(temp_path)
+
+#             imported.append(uploaded_file.filename)
+
+#         except Exception as e:
+
+#             failed.append(f"{uploaded_file.filename}: {e}")
+
+#         finally:
+
+#             if temp_path and temp_path.exists():
+#                 os.remove(temp_path)
+
+#     return {
+#         "imported": imported,
+#         "failed": failed,
+#         "imported_count": len(imported),
+#         "failed_count": len(failed)
+#     }

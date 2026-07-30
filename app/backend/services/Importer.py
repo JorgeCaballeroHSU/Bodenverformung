@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 import hashlib
 
-def calculate_sha256(filepath: str) -> str:
+def calculate_sha256(filepath: str|Path) -> str:
 
     sha256 = hashlib.sha256()
 

@@ -2,13 +2,10 @@ console.log("Database script loaded");
 
 let selectedExcelFiles = [];
 
-/**
- * Wait until page is loaded
- */
+/*** Wait until page is loaded ***/
 document.addEventListener("DOMContentLoaded", () => {
 
-    const folderPicker =
-        document.getElementById("folderPicker");
+    const folderPicker = document.getElementById("folderPicker");
 
     if (!folderPicker) {
         console.error("folderPicker not found");
@@ -21,9 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 });
 
-/**
- * Triggered when folder is selected
- */
+/*** Triggered when folder is selected ***/
 async function handleFolderSelection(event) {
 
     const files = [...event.target.files];
@@ -99,18 +94,15 @@ function updateFolderInfo() {
  */
 function populateFileTable(uploadedFiles = []) {
 
-    const tableBody =
-        document.getElementById("fileBody");
+    const tableBody = document.getElementById("fileBody");
 
     tableBody.innerHTML = "";
 
-    selectedExcelFiles.forEach(file => {
+    selectedExcelFiles.forEach((file,index) => {
 
-        const uploaded =
-            uploadedFiles.includes(file.name);
+        const uploaded = uploadedFiles.includes(file.name);
 
-        const row =
-            document.createElement("tr");
+        const row = document.createElement("tr");
 
         row.innerHTML = `
             <td>
@@ -119,7 +111,7 @@ function populateFileTable(uploadedFiles = []) {
                     ? ''
                     : `<input type="checkbox"
                             class="fileCheckbox"
-                            value="${file.webkitRelativePath}"
+                            value="${index}"
                             checked>`
                 }
             </td>
@@ -139,41 +131,68 @@ function populateFileTable(uploadedFiles = []) {
     });
 }
 
-/**
- * Upload selected files
- */
+/*** Upload selected files ***/
 async function uploadSelectedFiles() {
 
-    const selectedFiles = [
+    const selectedIndexes = [
         ...document.querySelectorAll(
             ".fileCheckbox:checked"
         )
-    ].map(cb => cb.value);
+    ].map(cb => parseInt(cb.value));
 
-    if (selectedFiles.length === 0) {
+    if (selectedIndexes.length === 0) {
 
         alert("No files selected.");
         return;
     }
 
+    const formData = new FormData();
+
+    selectedIndexes.forEach(index => {
+
+        const file = selectedExcelFiles[index];
+
+        console.log("INDEX:", index);
+        console.log("FILE:", file);
+
+        console.log("selectedExcelFiles:", selectedExcelFiles);
+        console.log("selectedIndexes:", selectedIndexes);
+
+        formData.append(
+            "files",
+            file,
+            file.name
+        );
+    });
+
+    console.log("FORM DATA:");
+
+
+    for (const pair of formData.entries()) {
+
+        console.log(
+            pair[0],
+            pair[1],
+            pair[1] instanceof File
+        );
+    }
+
     try {
 
-        const response = await fetch(
-            "/api/upload-files",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    files: selectedFiles
-                })
-            }
-        );
+        console.log("FormData contents:");
+
+        for (const pair of formData.entries()) {
+            console.log(pair[0], pair[1]);
+        }
+        
+        const response = await fetch("/api/upload-files",{method: "POST", body: formData});
 
         const result = await response.json();
 
-        alert(result.message);
+        alert(
+            `Imported: ${result.imported_count}\n` +
+            `Failed: ${result.failed_count}`
+        );
 
     } catch(error) {
 
@@ -183,9 +202,7 @@ async function uploadSelectedFiles() {
     }
 }
 
-/**
- * Connect button
- */
+/*** Connect button ***/
 document.addEventListener("click", event => {
 
     if (event.target.id === "uploadButton") {

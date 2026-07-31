@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Database Import</title>
 
+    <script src="https://cdn.plot.ly/plotly-2.35pt"></script>
     <link rel="stylesheet" href="frontend/style/style-db.css">
     <link rel="stylesheet" href="frontend/style/style.css">
 
@@ -49,27 +50,88 @@
 
     <br>
 
-    <table id="fileTable">
+    <div class="dashboard-layout">
 
-        <thead>
-            <tr>
-                <th>Select</th>
-                <th>File Name</th>
-                <th>Status</th>
-            </tr>
-        </thead>
+        <!-- LEFT COLUMN -->
 
-        <tbody id="fileBody">
+        <div class="files-panel">
 
-            <!-- Populated by database.js -->
+            <table id="fileTable">
 
-        </tbody>
+                <thead>
+                    <tr>
+                        <th>Select</th>
+                        <th>File Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
 
-    </table>
+                <tbody id="fileBody">
+                    <!-- Filled by JS -->
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+
+        <div class="stats-panel">
+
+            <h3>Database Summary</h3>
+
+            <div class="kpi-container">
+
+                <div class="kpi-card">
+                    <span>Total Tests</span>
+                    <h2 id="totalTests">-</h2>
+                </div>
+
+                <div class="kpi-card">
+                    <span>Total Measurements</span>
+                    <h2 id="totalMeasurements">-</h2>
+                </div>
+
+                <div class="kpi-card">
+                    <span>Avg Stress (kPa)</span>
+                    <h2 id="avgStress">-</h2>
+                </div>
+
+                <div class="kpi-card">
+                    <span>Max Force (kN)</span>
+                    <h2 id="maxForce">-</h2>
+                </div>
+
+            </div>
+
+            <div id="stressStrainPlot"></div>
+
+        </div>
+
+    </div>
 
     <br>
 
-</div>
+    <div class="plots-section">
+
+        <div id="forceDisplacementPlot"></div>
+
+        <div id="stressHistogram"></div>
+
+        <div id="strainHistogram"></div>
+
+        <div id="correlationMatrix"></div>
+
+    </div>
+
+    <br>
+
+    <button id="uploadButton">
+        Import Selected Files
+    </button>
+
+
+    </div>
 
 <footer id="footer">
 

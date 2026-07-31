@@ -26,10 +26,10 @@ class Importer():
         
         self.database = Database()
 
-    def import_file(self, file_path):
+    def import_file(self, file_path,file_name):
 
         # gets the test type and the workbook type
-        test_type = FileClassifier.classify(file_path)
+        test_type = FileClassifier.classify(file_name)
         workbook = ExcelReader.load(file_path)
 
         # checks the type of test
@@ -46,34 +46,48 @@ class Importer():
             )
 
         file_data = {
-            "filename": Path(file_path).name,
-            "filepath": str(file_path),
+            "filename": Path(file_name).name,
+            "filepath": "None Provided",
             "sha256": calculate_sha256(file_path),
             "file_size": Path(file_path).stat().st_size,
             "import_date": datetime.now().isoformat()
         }
 
         # checks if the file was already processed
-        # defines statement to select ID's from table files
-        query = """SELECT id FROM files WHERE sha256 = ?"""
+        
+        try:
 
-        # gets a list of ids that match the query
-        result = self.database.getItemsTable(query=query, values=(file_data["sha256"],))
+            # opens connection to database
+            self.database.openConnection()
 
-        # defines what to do if the file was already processed
-        if result:
+            # defines statement to select ID's from table files
+            query = """SELECT id FROM files WHERE sha256 = ?"""
 
-            # reports
-            print("File already imported.")
+            # gets a list of ids that match the query
+            result = self.database.fetchInfo(statement=query, values=(file_data["sha256"],))
 
-        # procceds with the rest of the process
-        else:
+            # closes connection to database
+            self.database.closeConnection()
 
-            # parses the data
-            data = parser.parse()
+            # defines what to do if the file was already processed
+            if result:
 
-            # saves the data in the database
-            self.save_to_database(data, file_data)
+                # reports
+                print("File already imported.")
+
+            # procceds with the rest of the process
+            else:
+
+                # parses the data
+                data = parser.parse()
+
+                # saves the data in the database
+                self.save_to_database(data, file_data)
+
+        finally:
+
+            # closes connection to database
+            self.database.closeConnection()
 
     def save_to_database(self, data: dict, file_data:dict) -> dict:
         """

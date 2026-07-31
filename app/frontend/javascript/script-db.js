@@ -1,11 +1,12 @@
-console.log("Database script loaded");
+console.log("Database script loaded - VERSION 999");
 
 let selectedExcelFiles = [];
 
 /*** Wait until page is loaded ***/
 document.addEventListener("DOMContentLoaded", () => {
 
-    const folderPicker = document.getElementById("folderPicker");
+    const folderPicker =
+        document.getElementById("folderPicker");
 
     if (!folderPicker) {
         console.error("folderPicker not found");
@@ -16,6 +17,9 @@ document.addEventListener("DOMContentLoaded", () => {
         "change",
         handleFolderSelection
     );
+
+    loadDashboard();
+
 });
 
 /*** Triggered when folder is selected ***/
@@ -152,12 +156,6 @@ async function uploadSelectedFiles() {
 
         const file = selectedExcelFiles[index];
 
-        console.log("INDEX:", index);
-        console.log("FILE:", file);
-
-        console.log("selectedExcelFiles:", selectedExcelFiles);
-        console.log("selectedIndexes:", selectedIndexes);
-
         formData.append(
             "files",
             file,
@@ -194,6 +192,9 @@ async function uploadSelectedFiles() {
             `Failed: ${result.failed_count}`
         );
 
+        /*** Loads the dashboard***/
+        loadDashboard()
+
     } catch(error) {
 
         console.error(error);
@@ -210,4 +211,218 @@ document.addEventListener("click", event => {
         uploadSelectedFiles();
     }
 });
+
+/*** main dashboard loader***/
+async function loadDashboard(){
+
+    try{
+
+        loadSummary();
+        loadStressStrain();
+        loadForceDisplacement();
+        loadStressHistogram();
+        loadStrainHistogram();
+        loadCorrelationMatrix();
+
+    }
+    catch(error){
+
+        console.error(
+            "Dashboard loading error:",
+            error
+        );
+
+    }
+
+}
+
+/***KPI cards***/
+async function loadSummary(){
+
+    const response =
+        await fetch("/api/database-summary");
+
+    const data =
+        await response.json();
+
+    document.getElementById(
+        "totalTests"
+    ).innerText =
+        data.total_tests;
+
+    document.getElementById(
+        "totalMeasurements"
+    ).innerText =
+        data.total_measurements;
+
+    document.getElementById(
+        "avgStress"
+    ).innerText =
+        data.avg_stress.toFixed(2);
+
+    document.getElementById(
+        "maxForce"
+    ).innerText =
+        data.max_force.toFixed(2);
+
+}
+
+/***Stress-Strian Plot ***/
+async function loadStressStrain(){
+
+    const response =
+        await fetch("/api/stress-strain");
+
+    const data =
+        await response.json();
+
+    Plotly.newPlot(
+        "stressStrainPlot",
+        [
+            {
+                x:data.strain_pct,
+                y:data.stress_kpa,
+                mode:"markers",
+                type:"scatter",
+                marker:{
+                    size:4
+                }
+            }
+        ],
+        {
+            title:"Stress vs Strain",
+            xaxis:{
+                title:"Strain (%)"
+            },
+            yaxis:{
+                title:"Stress (kPa)"
+            }
+        },
+        {
+            responsive:true
+        }
+    );
+
+}
+
+/*** Force vs Displacement***/
+async function loadForceDisplacement(){
+
+    const response =
+        await fetch("/api/force-displacement");
+
+    const data =
+        await response.json();
+
+    Plotly.newPlot(
+        "forceDisplacementPlot",
+        [
+            {
+                x:data.displacement_mm,
+                y:data.force_kn,
+                mode:"markers",
+                type:"scatter"
+            }
+        ],
+        {
+            title:"Force vs Displacement",
+            xaxis:{
+                title:"Displacement (mm)"
+            },
+            yaxis:{
+                title:"Force (kN)"
+            }
+        },
+        {
+            responsive:true
+        }
+    );
+
+}
+
+/***Stress Histogram***/
+async function loadStressHistogram(){
+
+    const response =
+        await fetch("/api/stress-histogram");
+
+    const data =
+        await response.json();
+
+    Plotly.newPlot(
+        "stressHistogram",
+        [
+            {
+                x:data.stress_kpa,
+                type:"histogram"
+            }
+        ],
+        {
+            title:"Stress Distribution"
+        },
+        {
+            responsive:true
+        }
+    );
+
+}
+
+/***Strain Histogram***/
+async function loadStrainHistogram(){
+
+    const response =
+        await fetch("/api/strain-histogram");
+
+    const data =
+        await response.json();
+
+    Plotly.newPlot(
+        "strainHistogram",
+        [
+            {
+                x:data.strain_pct,
+                type:"histogram"
+            }
+        ],
+        {
+            title:"Strain Distribution"
+        },
+        {
+            responsive:true
+        }
+    );
+
+}
+
+/***Correlation Matrix***/
+async function loadCorrelationMatrix(){
+
+    const response =
+        await fetch("/api/correlation");
+
+    const data =
+        await response.json();
+
+    Plotly.newPlot(
+        "correlationMatrix",
+        [
+            {
+                z:data.matrix,
+                x:data.columns,
+                y:data.columns,
+                type:"heatmap",
+                colorscale:"Viridis"
+            }
+        ],
+        {
+            title:"Correlation Matrix"
+        },
+        {
+            responsive:true
+        }
+    );
+
+}
+
+
 

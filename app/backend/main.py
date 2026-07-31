@@ -9,6 +9,7 @@ from database.database import *
 from services.Importer import Importer
 from pathlib import Path
 import os
+import numpy as np
 
 
 # Creates database according to defined schema
@@ -20,7 +21,7 @@ app = FastAPI()
 # defines directories base and front end directory
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = BASE_DIR.parent / "frontend"
-
+print(FRONTEND_DIR)
 app.mount(
     "/frontend",
     StaticFiles(directory=str(FRONTEND_DIR)),
@@ -82,57 +83,257 @@ async def check_files(data: dict = Body(...)):
         "uploaded": uploaded_files
     }
 
-from fastapi import Request
-
 @app.post("/api/upload-files")
-async def upload_files(request: Request):
+async def upload_files(files: list[UploadFile] = File(...)):
 
-    form = await request.form()
+    # creates an Importer object to handle the importation of the files
+    importer=Importer()
 
-    print("FORM CONTENTS:")
-    print(form)
+    # initializes variables imported and failed to append according to the names of the variables
+    imported=[]
+    failed=[]
 
-    return {"ok": True}
+    for uploaded_file in files:
 
-# @app.post("/api/upload-files")
-# async def upload_files(files: list[UploadFile] = File(...)):
+        temp_path=None
 
-#     # creates an Importer object to handle the importation of the files
-#     importer=Importer()
+        try:
 
-#     # initializes variables imported and failed to append according to the names of the variables
-#     imported=[]
-#     failed=[]
+            with NamedTemporaryFile(delete=False,suffix=".xlsx") as tmp:
 
-#     for uploaded_file in files:
+                content = await uploaded_file.read()
+                tmp.write(content)
 
-#         temp_path=None
+                temp_path = Path(tmp.name)
 
-#         try:
+            importer.import_file(temp_path,uploaded_file.filename)
 
-#             with NamedTemporaryFile(delete=False, suffix=".xlsx" ) as tmp:
+            imported.append(uploaded_file.filename)
 
-#                 content = await uploaded_file.read()
-#                 tmp.write(content)
+        except Exception as e:
 
-#                 temp_path = Path(tmp.name)
+            failed.append(f"{uploaded_file.filename}: {e}")
 
-#             importer.import_file(temp_path)
+        finally:
 
-#             imported.append(uploaded_file.filename)
+            if temp_path and temp_path.exists():
+                os.remove(temp_path)
 
-#         except Exception as e:
+    return {
+        "imported": imported,
+        "failed": failed,
+        "imported_count": len(imported),
+        "failed_count": len(failed)
+    }
 
-#             failed.append(f"{uploaded_file.filename}: {e}")
+# Database summary
+@app.get("/api/database-summary")
+async def database_summary():
 
-#         finally:
+    db = Database()
+    db.openConnection()
 
-#             if temp_path and temp_path.exists():
-#                 os.remove(temp_path)
+    try:
 
-#     return {
-#         "imported": imported,
-#         "failed": failed,
-#         "imported_count": len(imported),
-#         "failed_count": len(failed)
-#     }
+        total_tests = db.fetchInfo(
+            "SELECT COUNT(*) as value FROM tests"
+        )[0]["value"]
+
+        total_measurements = db.fetchInfo(
+            "SELECT COUNT(*) as value FROM measurements"
+        )[0]["value"]
+
+        avg_stress = db.fetchInfo(
+            """
+            SELECT AVG(stress_kpa) as value
+            FROM measurements
+            """
+        )[0]["value"]
+
+        max_force = db.fetchInfo(
+            """
+            SELECT MAX(force_kn) as value
+            FROM measurements
+            """
+        )[0]["value"]
+
+        return {
+            "total_tests": total_tests,
+            "total_measurements": total_measurements,
+            "avg_stress": avg_stress or 0,
+            "max_force": max_force or 0
+        }
+
+    finally:
+        db.closeConnection()
+
+# stress vs strain
+@app.get("/api/stress-strain")
+async def stress_strain():
+
+    db = Database()
+    db.openConnection()
+
+    try:
+
+        data = db.fetchInfo(
+            """
+            SELECT strain_pct,
+                   stress_kpa
+            FROM measurements
+            WHERE strain_pct IS NOT NULL
+              AND stress_kpa IS NOT NULL
+            LIMIT 50000
+            """
+        )
+
+        return {
+            "strain_pct":
+                [row["strain_pct"] for row in data],
+            "stress_kpa":
+                [row["stress_kpa"] for row in data]
+        }
+
+    finally:
+        db.closeConnection()
+
+# Force vs Displacement
+@app.get("/api/force-displacement")
+async def force_displacement():
+
+    db = Database()
+    db.openConnection()
+
+    try:
+
+        data = db.fetchInfo(
+            """
+            SELECT displacement_mm,
+                   force_kn
+            FROM measurements
+            WHERE displacement_mm IS NOT NULL
+              AND force_kn IS NOT NULL
+            LIMIT 50000
+            """
+        )
+
+        return {
+            "displacement_mm":
+                [row["displacement_mm"] for row in data],
+            "force_kn":
+                [row["force_kn"] for row in data]
+        }
+
+    finally:
+        db.closeConnection()
+
+# Stress Histogram
+@app.get("/api/stress-histogram")
+async def stress_histogram():
+
+    db = Database()
+    db.openConnection()
+
+    try:
+
+        data = db.fetchInfo(
+            """
+            SELECT stress_kpa
+            FROM measurements
+            WHERE stress_kpa IS NOT NULL
+            LIMIT 100000
+            """
+        )
+
+        return {
+            "stress_kpa":
+                [row["stress_kpa"] for row in data]
+        }
+
+    finally:
+        db.closeConnection()
+
+# strain histogram
+@app.get("/api/strain-histogram")
+async def strain_histogram():
+
+    db = Database()
+    db.openConnection()
+
+    try:
+
+        data = db.fetchInfo(
+            """
+            SELECT strain_pct
+            FROM measurements
+            WHERE strain_pct IS NOT NULL
+            LIMIT 100000
+            """
+        )
+
+        return {
+            "strain_pct":
+                [row["strain_pct"] for row in data]
+        }
+
+    finally:
+        db.closeConnection()
+
+# correlation matrix
+@app.get("/api/correlation")
+async def correlation_matrix():
+
+    db = Database()
+    db.openConnection()
+
+    try:
+
+        rows = db.fetchInfo(
+            """
+            SELECT
+                force_kn,
+                displacement_mm,
+                sample_height_mm,
+                strain_ratio,
+                strain_pct,
+                stress_kpa
+            FROM measurements
+            WHERE
+                force_kn IS NOT NULL
+                AND displacement_mm IS NOT NULL
+                AND sample_height_mm IS NOT NULL
+                AND strain_ratio IS NOT NULL
+                AND strain_pct IS NOT NULL
+                AND stress_kpa IS NOT NULL
+            LIMIT 50000
+            """
+        )
+
+        columns = [
+            "force_kn",
+            "displacement_mm",
+            "sample_height_mm",
+            "strain_ratio",
+            "strain_pct",
+            "stress_kpa"
+        ]
+
+        matrix = np.array(
+            [
+                [row[col] for col in columns]
+                for row in rows
+            ]
+        )
+
+        corr = np.corrcoef(
+            matrix,
+            rowvar=False
+        )
+
+        return {
+            "columns": columns,
+            "matrix": corr.tolist()
+        }
+
+    finally:
+        db.closeConnection()

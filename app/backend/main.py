@@ -183,7 +183,8 @@ async def stress_strain():
             FROM measurements
             WHERE strain_pct IS NOT NULL
               AND stress_kpa IS NOT NULL
-            LIMIT 50000
+            ORDER BY RANDOM()
+            LIMIT 20000
             """
         )
 
@@ -213,7 +214,8 @@ async def force_displacement():
             FROM measurements
             WHERE displacement_mm IS NOT NULL
               AND force_kn IS NOT NULL
-            LIMIT 50000
+            ORDER BY RANDOM()
+            LIMIT 20000
             """
         )
 
@@ -241,6 +243,7 @@ async def stress_histogram():
             SELECT stress_kpa
             FROM measurements
             WHERE stress_kpa IS NOT NULL
+            ORDER BY RANDOM()
             LIMIT 100000
             """
         )
@@ -267,6 +270,7 @@ async def strain_histogram():
             SELECT strain_pct
             FROM measurements
             WHERE strain_pct IS NOT NULL
+            ORDER BY RANDOM()
             LIMIT 100000
             """
         )
@@ -305,7 +309,8 @@ async def correlation_matrix():
                 AND strain_ratio IS NOT NULL
                 AND strain_pct IS NOT NULL
                 AND stress_kpa IS NOT NULL
-            LIMIT 50000
+            ORDER BY RANDOM()
+            LIMIT 20000
             """
         )
 
@@ -334,6 +339,38 @@ async def correlation_matrix():
             "columns": columns,
             "matrix": corr.tolist()
         }
+
+    finally:
+        db.closeConnection()
+
+@app.get("/api/sample-summary")
+async def sample_summary():
+
+    db = Database()
+    db.openConnection()
+
+    try:
+
+        result = db.fetchInfo(
+            """
+            SELECT
+                AVG(water_content) AS water_mean,
+                MIN(water_content) AS water_min,
+                MAX(water_content) AS water_max,
+
+                AVG(density_kg_m3) AS density_mean,
+                MIN(density_kg_m3) AS density_min,
+                MAX(density_kg_m3) AS density_max,
+
+                AVG(initial_mass_kg) AS mass_mean,
+                MIN(initial_mass_kg) AS mass_min,
+                MAX(initial_mass_kg) AS mass_max
+
+            FROM samples
+            """
+        )
+
+        return result[0]
 
     finally:
         db.closeConnection()

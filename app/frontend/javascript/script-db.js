@@ -222,6 +222,7 @@ async function loadDashboard(){
         loadForceDisplacement();
         loadStressHistogram();
         loadStrainHistogram();
+        loadSampleSummary();
         loadCorrelationMatrix();
 
     }
@@ -422,6 +423,59 @@ async function loadCorrelationMatrix(){
         }
     );
 
+}
+
+async function loadSampleSummary(){
+
+    const response =
+        await fetch("/api/sample-summary");
+
+    const data =
+        await response.json();
+
+    document.getElementById(
+        "summaryTable"
+    ).innerHTML = `
+        <h3>Sample Statistics</h3>
+
+        <table class="summary-table">
+
+            <thead>
+                <tr>
+                    <th>Variable</th>
+                    <th>Mean</th>
+                    <th>Min</th>
+                    <th>Max</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <tr>
+                    <td>Water Content</td>
+                    <td>${Number(data.water_mean).toFixed(2)}</td>
+                    <td>${Number(data.water_min).toFixed(2)}</td>
+                    <td>${Number(data.water_max).toFixed(2)}</td>
+                </tr>
+
+                <tr>
+                    <td>Density (kg/m³)</td>
+                    <td>${Number(data.density_mean).toFixed(2)}</td>
+                    <td>${Number(data.density_min).toFixed(2)}</td>
+                    <td>${Number(data.density_max).toFixed(2)}</td>
+                </tr>
+
+                <tr>
+                    <td>Initial Mass (kg)</td>
+                    <td>${Number(data.mass_mean).toFixed(2)}</td>
+                    <td>${Number(data.mass_min).toFixed(2)}</td>
+                    <td>${Number(data.mass_max).toFixed(2)}</td>
+                </tr>
+
+            </tbody>
+
+        </table>
+    `;
 }
 
 

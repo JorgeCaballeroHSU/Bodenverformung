@@ -18,6 +18,32 @@ def calculate_sha256(filepath: str|Path) -> str:
 
     return sha256.hexdigest()
 
+# auxiliary function to clean numeric values
+def clean_numeric(value):
+    """ Cleans a numeric value by checking for None, empty strings, and specific error strings.
+    Returns None for invalid values, otherwise returns the cleaned value."""
+
+    # checks if the value is None
+    if value is None:
+
+        # returns None
+        return None
+
+    # checks if the value is a string and cleans it
+    if isinstance(value, str):
+
+        # strips whitespace from the value
+        value = value.strip()
+
+        # checks if the value is an empty string
+        if value.upper() in {"#DIV/0!", "#VALUE!", "#N/A", "#REF!", "#NAME?", "#NUM!"}:
+
+            # returns None for specific error strings
+            return None
+
+    # checks if the value is a string and can be converted to a float
+    return value
+
 # coordinates the processing of the files
 class Importer():
     
@@ -48,7 +74,7 @@ class Importer():
         file_data = {
             "filename": Path(file_name).name,
             "filepath": "None Provided",
-            "sha256": calculate_sha256(file_path),
+            "sha256": calculate_sha256(file_name),
             "file_size": Path(file_path).stat().st_size,
             "import_date": datetime.now().isoformat()
         }
@@ -133,7 +159,7 @@ class Importer():
             VALUES (?, ?, ?, ?, ?)"""
 
             # defines the values for the query
-            values = (location_id, sample["material"], sample["water_content"], sample["density_kg_m3"], sample["initial_mass_kg"])
+            values = (location_id, sample["material"], clean_numeric(sample["water_content"]), clean_numeric(sample["density_kg_m3"]), clean_numeric(sample["initial_mass_kg"]))
 
             # exceutes the query and gets the last id
             sample_id,_=self.database.insertItemsTable(query=query,values=values)
@@ -144,8 +170,8 @@ class Importer():
             compressive_strength_kpa, failure_strain_pct, operator_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
 
             # defines the values for the query
-            values=(sample_id, test["test_type"], test["test_date"], test["initial_height_mm"], test["initial_diameter_mm"],
-                    test["young_modulus_kpa"], test["compressive_strength_kpa"], test["failure_strain_pct"], test["operator_name"])
+            values=(sample_id, test["test_type"], test["test_date"], clean_numeric(test["initial_height_mm"]), clean_numeric(test["initial_diameter_mm"]),
+                    clean_numeric(test["young_modulus_kpa"]), clean_numeric(test["compressive_strength_kpa"]), clean_numeric(test["failure_strain_pct"]), test["operator_name"])
             
             # executes the query and gets the last id
             test_id,_=self.database.insertItemsTable(query=query,values=values)
@@ -169,9 +195,9 @@ class Importer():
             # defines the values of the query and insert them in the database
             for row in measurements:
 
-                values = values = (int(test_id), float(row["time_s"]), float(row["force_kn"]), float(row["displacement_mm"]),
-                                    float(row["sample_height_mm"]), float(row["strain_ratio"]), float(row["strain_pct"]),
-                                    float(row["stress_kpa"]), float(row["strain_at_max_stress_pct"]))
+                values = values = (int(test_id), clean_numeric(float(row["time_s"])), clean_numeric(float(row["force_kn"])), clean_numeric(float(row["displacement_mm"])),
+                                    clean_numeric(float(row["sample_height_mm"])), clean_numeric(float(row["strain_ratio"])), clean_numeric(float(row["strain_pct"])),
+                                    clean_numeric(float(row["stress_kpa"])), clean_numeric(float(row["strain_at_max_stress_pct"])))
 
                 # inserts values in the database
                 self.database.insertItemsTable(query=query, values=values)

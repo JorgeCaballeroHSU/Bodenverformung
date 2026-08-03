@@ -359,8 +359,15 @@ async function loadStressHistogram(){
             }
         ],
         {
-            title:"Stress Distribution"
+            title:"Stress Distribution",
+            xaxis:{
+                title:"Stress (kPa)"
+            },
+            yaxis:{
+                title:"Count (-)"
+            }
         },
+        
         {
             responsive:true
         }
@@ -386,7 +393,14 @@ async function loadStrainHistogram(){
             }
         ],
         {
-            title:"Strain Distribution"
+            title:"Strain Distribution",
+            
+            xaxis:{
+                title:"Strain (%)"
+            },
+            yaxis:{
+                title:"Count (-)"
+            }
         },
         {
             responsive:true

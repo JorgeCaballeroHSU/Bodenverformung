@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from tempfile import NamedTemporaryFile
 
 from database.database import *
-from services.Importer import Importer
+from services.Importer import Importer, calculate_sha256 
 from pathlib import Path
 import os
 import numpy as np
@@ -22,11 +22,7 @@ app = FastAPI()
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = BASE_DIR.parent / "frontend"
 print(FRONTEND_DIR)
-app.mount(
-    "/frontend",
-    StaticFiles(directory=str(FRONTEND_DIR)),
-    name="frontend"
-)
+app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
 
 # HTML templates
 templates = Jinja2Templates(directory="templates")
@@ -63,25 +59,17 @@ async def check_files(data: dict = Body(...)):
 
         for filename in filenames:
 
-            result = db.fetchInfo(
-                """
-                SELECT filename
-                FROM files
-                WHERE filename = ?
-                """,
-                (filename,)
-            )
+            result = db.fetchInfo("""SELECT filename FROM files WHERE sha256 = ?""", (calculate_sha256(filename),))
 
             if result:
+
                 uploaded_files.append(filename)
 
     finally:
 
         db.closeConnection()
 
-    return {
-        "uploaded": uploaded_files
-    }
+    return {"uploaded": uploaded_files}
 
 @app.post("/api/upload-files")
 async def upload_files(files: list[UploadFile] = File(...)):
@@ -177,22 +165,13 @@ async def stress_strain():
     try:
 
         data = db.fetchInfo(
-            """
-            SELECT strain_pct,
-                   stress_kpa
-            FROM measurements
-            WHERE strain_pct IS NOT NULL
-              AND stress_kpa IS NOT NULL
-            ORDER BY RANDOM()
-            LIMIT 20000
-            """
+            """SELECT strain_pct, stress_kpa FROM measurements WHERE strain_pct IS NOT NULL AND stress_kpa IS NOT NULL
+            ORDER BY RANDOM() LIMIT 20000"""
         )
 
         return {
-            "strain_pct":
-                [row["strain_pct"] for row in data],
-            "stress_kpa":
-                [row["stress_kpa"] for row in data]
+            "strain_pct":[row["strain_pct"] for row in data],
+            "stress_kpa":[row["stress_kpa"] for row in data]
         }
 
     finally:

@@ -1,11 +1,14 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from tensorflow.keras.models import (Sequential,Model)
-from tensorflow.keras.layers import (Input,Dense,Dropout,LSTM,GRU, Bidirectional, RepeatVector, TimeDistributed, Attention,
+from keras.models import (Sequential,Model)
+from keras.layers import (Input,Dense,Dropout,LSTM,GRU, Bidirectional, RepeatVector, TimeDistributed, Attention,
                                      Concatenate, Conv1D, MaxPooling1D)
-from tensorflow.keras.optimizers import Adam
-from neuralforecast.models import TFT
-
+from keras.optimizers import Adam
+try:
+    from neuralforecast.models import TFT
+    print("TFT imported successfully")
+except Exception as e:
+    print("ERROR:", e)
 
 class BaseModel(ABC):
 
@@ -18,14 +21,19 @@ class BaseModel(ABC):
         """Build the model architecture."""
         pass
 
-    def fit(self, X_train, y_train, **kwargs):
-        """Train model."""
+    def fit(self, X_train, y_train=None, **kwargs):
 
-        # trains the model
-        self.train_history = self.model.fit( X_train, y_train, **kwargs)
+        if y_train is None:
+            return self.model.fit(
+                X_train,
+                **kwargs
+            )
 
-        # returns train history of the model
-        return self.train_history
+        return self.model.fit(
+            X_train,
+            y_train,
+            **kwargs
+        )
 
     def predict(self, X):
         """Predict values."""

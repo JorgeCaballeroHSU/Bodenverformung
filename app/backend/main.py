@@ -1,9 +1,10 @@
-# Imports required libraries
-from fastapi import FastAPI, Request, Body, UploadFile, File
+from fastapi import FastAPI,Body, UploadFile, File
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from tempfile import NamedTemporaryFile
+
+from sympy import group
 
 from database.database import *
 from services.Importer import Importer
@@ -13,27 +14,14 @@ import numpy as np
 from pydantic import BaseModel
 import pandas as pd
 
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import (mean_absolute_error, mean_squared_error, r2_score)
+import tensorflow as tf
 
-from models.models import (
-    LSTMForecaster,
-    StackedLSTMForecaster,
-    BiLSTMForecaster,
-    EncoderDecoderLSTMForecaster,
-    Seq2SeqAttentionLSTMForecaster,
-    CNNLSTMForecaster,
-    GRUForecaster,
-    DeepARForecaster,
-    TFTForecaster
-)
+# Defines the models that can be used for training
+from models.models import (LSTMForecaster, StackedLSTMForecaster, BiLSTMForecaster, EncoderDecoderLSTMForecaster,
+                           Seq2SeqAttentionLSTMForecaster, CNNLSTMForecaster, GRUForecaster, DeepARForecaster, TFTForecaster)
 
-from models.naive import (
-    PersistenceForecast,
-    MovingAverageForecast,
-    LinearTrendForecast
-)
-
+# Defines the naive models for comparison
+from models.naive import (PersistenceForecast, MovingAverageForecast, LinearTrendForecast)
 
 # Creates database according to defined schema
 Schema()
@@ -429,107 +417,86 @@ async def train_model(config: TrainRequest):
 
     targets = config.targets
 
-    X,y = create_sequences(
-        df,
-        inputs,
-        targets,
-        config.lookback_steps,
-        config.horizon
-    )
+    dataset = tf.data.Dataset.from_generator(
+    lambda: sequence_generator(df, inputs, targets, config.lookback_steps, config.horizon),
+    output_signature=(
+        tf.TensorSpec(shape=(config.lookback_steps, len(inputs)), dtype=tf.float32),
+        tf.TensorSpec(shape=(len(targets),), dtype=tf.float32)
+    ))
+    dataset = dataset.batch(config.batch_size)
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
-    if len(X) == 0:
+    model = build_model(config, len(inputs))
+    history = model.model.fit(dataset,epochs=config.epochs,verbose=1)
 
-        return {
-            "error": "No valid training sequences found."
-        }
+    return {"message": "Training completed"}
 
-    split = int(len(X)*0.8)
+    # actual = y_test[:,0].tolist()
 
-    X_train = X[:split]
-    X_test = X[split:]
+    # predicted = predictions[:,0].tolist()
 
-    y_train = y[:split]
-    y_test = y[split:]
+    # # metrics
+    # mae = mean_absolute_error(
+    #     y_test,
+    #     predictions,
+    #     multioutput="uniform_average"
+    # )
 
-    model = build_model(config,X.shape[2])
+    # rmse = np.sqrt(
+    #     mean_squared_error(
+    #         actual,
+    #         predictions,
+    #         multioutput="uniform_average"
+    #     )
+    # )
 
-    history = model.fit(
-        X_train,
-        y_train,
-        validation_split=0.2,
-        epochs=config.epochs,
-        batch_size=config.batch_size,
-        verbose=1
-    )
+    # r2 = r2_score(
+    #     actual,
+    #     predictions,
+    #     multioutput="uniform_average"
+    # )
 
-    predictions = model.predict(X_test)
+    # return {
 
-    actual = y_test[:,0].tolist()
+    #     "mae": float(mae),
+    #     "rmse": float(rmse),
+    #     "r2": float(r2),
 
-    predicted = predictions[:,0].tolist()
+    #     "persistence": {
+    #         "mae": 0.071,
+    #         "rmse": 0.105,
+    #         "r2": 0.68
+    #     },
 
-    # metrics
-    mae = mean_absolute_error(
-        y_test,
-        predictions,
-        multioutput="uniform_average"
-    )
+    #     "moving_average": {
+    #         "mae": 0.055,
+    #         "rmse": 0.089,
+    #         "r2": 0.75
+    #     },
 
-    rmse = np.sqrt(
-        mean_squared_error(
-            actual,
-            predictions,
-            multioutput="uniform_average"
-        )
-    )
+    #     "linear_trend": {
+    #         "mae": 0.062,
+    #         "rmse": 0.092,
+    #         "r2": 0.73
+    #     },
 
-    r2 = r2_score(
-        actual,
-        predictions,
-        multioutput="uniform_average"
-    )
+    #     "actual": actual[:500],
+    #     "predicted": predicted[:500],
 
-    return {
+    #     "naive": [
+    #         10,10,11,12,13,14,15,16,17
+    #     ],
 
-        "mae": float(mae),
-        "rmse": float(rmse),
-        "r2": float(r2),
+    #     "loss": [
+    #         float(x)
+    #         for x in history.history["loss"]
+    #     ],
 
-        "persistence": {
-            "mae": 0.071,
-            "rmse": 0.105,
-            "r2": 0.68
-        },
-
-        "moving_average": {
-            "mae": 0.055,
-            "rmse": 0.089,
-            "r2": 0.75
-        },
-
-        "linear_trend": {
-            "mae": 0.062,
-            "rmse": 0.092,
-            "r2": 0.73
-        },
-
-        "actual": actual[:500],
-        "predicted": predicted[:500],
-
-        "naive": [
-            10,10,11,12,13,14,15,16,17
-        ],
-
-        "loss": [
-            float(x)
-            for x in history.history["loss"]
-        ],
-
-        "val_loss": [
-            float(x)
-            for x in history.history["val_loss"]
-        ]
-    }
+    #     "val_loss": [
+    #         float(x)
+    #         for x in history.history["val_loss"]
+    #     ]
+    # }
 
 # available features endpoint
 @app.get("/api/features")
@@ -691,54 +658,37 @@ def fetch_training_data():
 
 
 # sequence generator for training
-def create_sequences(
-    df,
-    inputs,
-    targets,
-    lookback,
-    horizon
-):
+def sequence_generator(df, inputs, targets, lookback, horizon):
 
-    X = []
-    y = []
+    total_tests = df["test_id"].nunique()
+    total_sequences = 0
 
-    for _, group in df.groupby("test_id"):
+    for idx, (_, group) in enumerate(df.groupby("test_id"), start=1):
 
-        group = (
-            group
-            .sort_values("time_s")
-            .reset_index(drop=True)
+        print(
+            f"Processing test {idx}/{total_tests}, "
+            f"rows={len(group)}"
         )
+
+        input_values = group[inputs].to_numpy(dtype=np.float32)
+        target_values = group[targets].to_numpy(dtype=np.float32)
 
         for i in range(
             lookback,
-            len(group)-horizon
+            len(group) - horizon
         ):
+            total_sequences += 1
 
-            sequence = group[
-                inputs
-            ].iloc[
-                i-lookback:i
-            ].values
+            if total_sequences % 50000 == 0:
+                print(f"{total_sequences:,} sequences generated")
 
-            target = group[
-                targets
-            ].iloc[
-                i+horizon
-            ].values
 
-            X.append(sequence)
-            y.append(target)
+            yield (
+                input_values[i-lookback:i],
+                target_values[i+horizon]
+            )
 
-    return (
-        np.array(X,dtype=np.float32),
-        np.array(y,dtype=np.float32)
-    )
-
-def build_model(
-    config,
-    n_features
-):
+def build_model(config, n_features):
 
     if config.model == "LSTMForecaster":
 

@@ -74,7 +74,7 @@ class Importer():
         file_data = {
             "filename": Path(file_name).name,
             "filepath": "None Provided",
-            "sha256": calculate_sha256(file_name),
+            "sha256": calculate_sha256(file_path),
             "file_size": Path(file_path).stat().st_size,
             "import_date": datetime.now().isoformat()
         }
@@ -195,7 +195,7 @@ class Importer():
             # defines the values of the query and insert them in the database
             for row in measurements:
 
-                values = values = (int(test_id), clean_numeric(float(row["time_s"])), clean_numeric(float(row["force_kn"])), clean_numeric(float(row["displacement_mm"])),
+                values = (int(test_id), clean_numeric(float(row["time_s"])), clean_numeric(float(row["force_kn"])), clean_numeric(float(row["displacement_mm"])),
                                     clean_numeric(float(row["sample_height_mm"])), clean_numeric(float(row["strain_ratio"])), clean_numeric(float(row["strain_pct"])),
                                     clean_numeric(float(row["stress_kpa"])), clean_numeric(float(row["strain_at_max_stress_pct"])))
 

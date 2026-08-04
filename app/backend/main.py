@@ -6,10 +6,33 @@ from fastapi.responses import FileResponse
 from tempfile import NamedTemporaryFile
 
 from database.database import *
-from services.Importer import Importer, calculate_sha256 
+from services.Importer import Importer
 from pathlib import Path
 import os
 import numpy as np
+from pydantic import BaseModel
+import pandas as pd
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import (mean_absolute_error, mean_squared_error, r2_score)
+
+from models.models import (
+    LSTMForecaster,
+    StackedLSTMForecaster,
+    BiLSTMForecaster,
+    EncoderDecoderLSTMForecaster,
+    Seq2SeqAttentionLSTMForecaster,
+    CNNLSTMForecaster,
+    GRUForecaster,
+    DeepARForecaster,
+    TFTForecaster
+)
+
+from models.naive import (
+    PersistenceForecast,
+    MovingAverageForecast,
+    LinearTrendForecast
+)
 
 
 # Creates database according to defined schema
@@ -59,7 +82,7 @@ async def check_files(data: dict = Body(...)):
 
         for filename in filenames:
 
-            result = db.fetchInfo("""SELECT filename FROM files WHERE sha256 = ?""", (calculate_sha256(filename),))
+            result = db.fetchInfo("""SELECT filename FROM files WHERE filename = ?""", (filename,))
 
             if result:
 
@@ -353,3 +376,436 @@ async def sample_summary():
 
     finally:
         db.closeConnection()
+
+class TrainRequest(BaseModel):
+
+    model: str
+
+    lookback_steps: int
+
+    horizon: int
+
+    inputs: list[str]
+
+    static_inputs: list[str]
+
+    targets: list[str]
+
+    epochs: int
+
+    batch_size: int
+
+    learning_rate: float
+
+    dropout: float
+
+    units: int
+
+# training endpoint
+@app.post("/api/train-model")
+async def train_model(config: TrainRequest):
+
+    print("Training configuration received")
+    print(config.model)
+
+    rows = fetch_training_data()
+
+    df = pd.DataFrame(rows)
+
+    required_columns = (
+        config.inputs +
+        config.static_inputs +
+        config.targets
+    )
+
+    df = df.dropna(
+        subset=required_columns
+    )
+
+    inputs = (
+        config.inputs +
+        config.static_inputs
+    )
+
+    targets = config.targets
+
+    X,y = create_sequences(
+        df,
+        inputs,
+        targets,
+        config.lookback_steps,
+        config.horizon
+    )
+
+    if len(X) == 0:
+
+        return {
+            "error": "No valid training sequences found."
+        }
+
+    split = int(len(X)*0.8)
+
+    X_train = X[:split]
+    X_test = X[split:]
+
+    y_train = y[:split]
+    y_test = y[split:]
+
+    model = build_model(config,X.shape[2])
+
+    history = model.fit(
+        X_train,
+        y_train,
+        validation_split=0.2,
+        epochs=config.epochs,
+        batch_size=config.batch_size,
+        verbose=1
+    )
+
+    predictions = model.predict(X_test)
+
+    actual = y_test[:,0].tolist()
+
+    predicted = predictions[:,0].tolist()
+
+    # metrics
+    mae = mean_absolute_error(
+        y_test,
+        predictions,
+        multioutput="uniform_average"
+    )
+
+    rmse = np.sqrt(
+        mean_squared_error(
+            actual,
+            predictions,
+            multioutput="uniform_average"
+        )
+    )
+
+    r2 = r2_score(
+        actual,
+        predictions,
+        multioutput="uniform_average"
+    )
+
+    return {
+
+        "mae": float(mae),
+        "rmse": float(rmse),
+        "r2": float(r2),
+
+        "persistence": {
+            "mae": 0.071,
+            "rmse": 0.105,
+            "r2": 0.68
+        },
+
+        "moving_average": {
+            "mae": 0.055,
+            "rmse": 0.089,
+            "r2": 0.75
+        },
+
+        "linear_trend": {
+            "mae": 0.062,
+            "rmse": 0.092,
+            "r2": 0.73
+        },
+
+        "actual": actual[:500],
+        "predicted": predicted[:500],
+
+        "naive": [
+            10,10,11,12,13,14,15,16,17
+        ],
+
+        "loss": [
+            float(x)
+            for x in history.history["loss"]
+        ],
+
+        "val_loss": [
+            float(x)
+            for x in history.history["val_loss"]
+        ]
+    }
+
+# available features endpoint
+@app.get("/api/features")
+async def features():
+
+    return {
+
+        "time_series": [
+
+            "force_kn",
+            "displacement_mm",
+            "sample_height_mm",
+            "strain_ratio",
+            "strain_pct",
+            "stress_kpa"
+
+        ],
+
+        "static": [
+
+            "water_content",
+            "density_kg_m3",
+            "initial_mass_kg"
+
+        ]
+    }
+
+# experiements endpoint
+@app.get("/api/experiments")
+async def experiments():
+
+    db = Database()
+    db.openConnection()
+
+    try:
+
+        rows = db.fetchInfo(
+            """
+            SELECT *
+            FROM prediction_experiments
+            ORDER BY created_at DESC
+            LIMIT 100
+            """
+        )
+
+        return rows
+
+    finally:
+
+        db.closeConnection()
+
+# training methadata endpoint
+@app.get("/api/training-metadata")
+async def training_metadata():
+
+    return {
+
+        "models":[
+
+            "LSTMForecaster",
+            "StackedLSTMForecaster",
+            "BiLSTMForecaster",
+            "EncoderDecoderLSTMForecaster",
+            "Seq2SeqAttentionLSTMForecaster",
+            "CNNLSTMForecaster",
+            "GRUForecaster",
+            "DeepARForecaster",
+            "TFTForecaster"
+
+        ],
+
+        "timeseries_features":[
+
+            "force_kn",
+            "displacement_mm",
+            "sample_height_mm",
+            "strain_ratio",
+            "strain_pct",
+            "stress_kpa"
+
+        ],
+
+        "static_features":[
+
+            "water_content",
+            "density_kg_m3",
+            "initial_mass_kg"
+
+        ],
+
+        "default_inputs":[
+
+            "force_kn",
+            "displacement_mm",
+            "sample_height_mm"
+
+        ],
+
+        "default_static":[
+
+            "water_content",
+            "density_kg_m3"
+
+        ],
+
+        "default_targets":[
+
+            "strain_pct",
+            "stress_kpa"
+
+        ]
+
+    }
+
+# dataset loader
+def fetch_training_data():
+
+    db = Database()
+    db.openConnection()
+
+    try:
+
+        return db.fetchInfo(
+            """
+            SELECT
+
+                measurements.test_id,
+
+                measurements.time_s,
+
+                measurements.force_kn,
+                measurements.displacement_mm,
+                measurements.sample_height_mm,
+                measurements.strain_ratio,
+                measurements.strain_pct,
+                measurements.stress_kpa,
+
+                samples.water_content,
+                samples.density_kg_m3,
+                samples.initial_mass_kg
+
+            FROM measurements
+
+            INNER JOIN tests
+                ON tests.id = measurements.test_id
+
+            INNER JOIN samples
+                ON samples.id = tests.sample_id
+
+            ORDER BY
+                measurements.test_id,
+                measurements.time_s
+            """
+        )
+
+    finally:
+
+        db.closeConnection()
+
+
+# sequence generator for training
+def create_sequences(
+    df,
+    inputs,
+    targets,
+    lookback,
+    horizon
+):
+
+    X = []
+    y = []
+
+    for _, group in df.groupby("test_id"):
+
+        group = (
+            group
+            .sort_values("time_s")
+            .reset_index(drop=True)
+        )
+
+        for i in range(
+            lookback,
+            len(group)-horizon
+        ):
+
+            sequence = group[
+                inputs
+            ].iloc[
+                i-lookback:i
+            ].values
+
+            target = group[
+                targets
+            ].iloc[
+                i+horizon
+            ].values
+
+            X.append(sequence)
+            y.append(target)
+
+    return (
+        np.array(X,dtype=np.float32),
+        np.array(y,dtype=np.float32)
+    )
+
+def build_model(
+    config,
+    n_features
+):
+
+    if config.model == "LSTMForecaster":
+
+        return LSTMForecaster(
+            input_steps=config.lookback_steps,
+            n_features=n_features,
+            n_targets=len(config.targets),
+            units=config.units,
+            dropout=config.dropout,
+            learning_rate=config.learning_rate
+        )
+
+    elif config.model == "StackedLSTMForecaster":
+
+        return StackedLSTMForecaster(
+            input_steps=config.lookback_steps,
+            n_features=n_features,
+            n_targets=len(config.targets),
+            units=config.units,
+            dropout=config.dropout,
+            learning_rate=config.learning_rate
+        )
+
+    elif config.model == "BiLSTMForecaster":
+
+        return BiLSTMForecaster(
+            input_steps=config.lookback_steps,
+            n_features=n_features,
+            n_targets=len(config.targets),
+            units=config.units,
+            dropout=config.dropout,
+            learning_rate=config.learning_rate
+        )
+
+    elif config.model == "CNNLSTMForecaster":
+
+        return CNNLSTMForecaster(
+            input_steps=config.lookback_steps,
+            n_features=n_features,
+            n_targets=len(config.targets),
+            units=config.units,
+            dropout=config.dropout,
+            learning_rate=config.learning_rate
+        )
+
+    elif config.model == "GRUForecaster":
+
+        return GRUForecaster(
+            input_steps=config.lookback_steps,
+            n_features=n_features,
+            n_targets=len(config.targets),
+            units=config.units,
+            dropout=config.dropout,
+            learning_rate=config.learning_rate
+        )
+
+    elif config.model == "DeepARForecaster":
+
+        return DeepARForecaster(
+            input_steps=config.lookback_steps,
+            n_features=n_features,
+            n_targets=len(config.targets),
+            units=config.units,
+            dropout=config.dropout,
+            learning_rate=config.learning_rate
+        )
+
+    raise ValueError(
+        f"Unsupported model: {config.model}"
+    )

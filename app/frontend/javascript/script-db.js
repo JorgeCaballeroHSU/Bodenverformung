@@ -466,10 +466,10 @@ async function loadSampleSummary(){
             <tbody>
 
                 <tr>
-                    <td>Water Content</td>
-                    <td>${Number(data.water_mean).toFixed(2)}</td>
-                    <td>${Number(data.water_min).toFixed(2)}</td>
-                    <td>${Number(data.water_max).toFixed(2)}</td>
+                    <td>Water Content (%)</td>
+                    <td>${Number(data.water_mean).toFixed(2)*100}</td>
+                    <td>${Number(data.water_min).toFixed(2)*100}</td>
+                    <td>${Number(data.water_max).toFixed(2)*100}</td>
                 </tr>
 
                 <tr>

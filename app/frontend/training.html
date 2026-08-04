@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Import</title>
+
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    
+    <link rel="stylesheet" href="frontend/style/style.css">
+    <link rel="stylesheet" href="frontend/style/style-training.css">
+
+</head>
+
+<body>
+
+    <header>
+
+        <img src="frontend/images/Geotechnical Department.png">
+
+        <h1>Deformation Prediction</h1>
+
+        <img src="frontend/images/Uni-Logo.jpeg">
+
+    </header>
+
+    <div class="training-container">
+
+        <h2>Model Training</h2>
+
+        <div class="training-layout">
+
+            <!-- CONFIGURATION PANEL -->
+
+            <div class="configuration-panel">
+
+                <h3>Model Configuration</h3>
+
+                <div class="form-group">
+                    <label for="modelSelect">Prediction Model</label>
+
+                    <select id="modelSelect">
+
+                        <option value="LSTMForecaster">LSTM</option>
+
+                        <option value="StackedLSTMForecaster">
+                            Stacked LSTM
+                        </option>
+
+                        <option value="BiLSTMForecaster">
+                            Bidirectional LSTM
+                        </option>
+
+                        <option value="EncoderDecoderLSTMForecaster">
+                            Encoder Decoder LSTM
+                        </option>
+
+                        <option value="Seq2SeqAttentionLSTMForecaster">
+                            Seq2Seq Attention LSTM
+                        </option>
+
+                        <option value="CNNLSTMForecaster">
+                            CNN-LSTM
+                        </option>
+
+                        <option value="GRUForecaster">
+                            GRU
+                        </option>
+
+                        <option value="DeepARForecaster">
+                            DeepAR
+                        </option>
+
+                        <option value="TFTForecaster">
+                            Temporal Fusion Transformer
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+                    <label>Input Lookback Steps</label>
+                    <input
+                        type="number"
+                        id="lookbackSteps"
+                        min="1"
+                        value="10">
+                </div>
+
+                <div class="form-group">
+                    <label>Forecast Horizon</label>
+                    <input
+                        type="number"
+                        id="forecastHorizon"
+                        min="1"
+                        value="1">
+                </div>
+
+                <h3>Time Series Inputs</h3>
+
+                <div id="timeseriesFeatures">
+
+                    <label><input type="checkbox" value="force_kn"> Force (kN)</label>
+
+                    <label><input type="checkbox" value="displacement_mm"> Displacement (mm)</label>
+
+                    <label><input type="checkbox" value="sample_height_mm"> Sample Height (mm)</label>
+
+                    <label><input type="checkbox" value="strain_ratio"> Strain Ratio</label>
+
+                    <label><input type="checkbox" value="strain_pct"> Strain (%)</label>
+
+                    <label><input type="checkbox" value="stress_kpa"> Stress (kPa)</label>
+
+                </div>
+
+                <h3>Static Sample Features</h3>
+
+                <div id="staticFeatures">
+
+                    <label><input type="checkbox" value="water_content"> Water Content  (%)</label>
+
+                    <label><input type="checkbox" value="density_kg_m3"> Density (kg/m³)</label>
+
+                    <label><input type="checkbox" value="initial_mass_kg"> Initial Mass (kg)</label>
+
+                </div>
+
+                <h3>Prediction Targets</h3>
+
+                <div id="targetFeatures" multiple>
+
+
+                        <label><input type="checkbox" value="force_kn"> Force (kN)</label>
+
+                        <label><input type="checkbox" value="displacement_mm"> Displacement (mm)</label>
+
+                        <label><input type="checkbox" value="sample_height_mm"> Sample Height (mm)</label>
+
+                        <label><input type="checkbox" value="strain_ratio"> Strain Ratio</label>
+
+                        <label><input type="checkbox" value="strain_pct"> Strain (%)</label>
+
+                        <label><input type="checkbox" value="stress_kpa"> Stress (kPa)</label>
+
+                </div>
+
+                <h3>Basic Hyperparameters</h3>
+
+                <div class="form-group">
+                    <label>Epochs</label>
+                    <input
+                        type="number"
+                        id="epochs"
+                        value="100">
+                </div>
+
+                <div class="form-group">
+                    <label>Batch Size</label>
+                    <input
+                        type="number"
+                        id="batchSize"
+                        value="32">
+                </div>
+
+                <div class="form-group">
+                    <label>Learning Rate</label>
+                    <input
+                        type="number"
+                        id="learningRate"
+                        value="0.001"
+                        step="0.0001">
+                </div>
+
+                <div class="form-group">
+                    <label>Dropout</label>
+                    <input
+                        type="number"
+                        id="dropout"
+                        value="0.20"
+                        step="0.05">
+                </div>
+
+                <div class="form-group">
+                    <label>LSTM / GRU Units</label>
+                    <input
+                        type="number"
+                        id="units"
+                        value="64">
+                </div>
+
+                <button id="trainButton">
+                    Train Model
+                </button>
+
+            </div>
+
+            <!-- RESULTS PANEL -->
+
+            <div class="results-panel">
+
+                <h3>Performance Summary</h3>
+
+                <div class="metrics-grid">
+
+                    <div class="metric-card">
+                        <span>MAE</span>
+                        <h2 id="maeValue">-</h2>
+                    </div>
+
+                    <div class="metric-card">
+                        <span>RMSE</span>
+                        <h2 id="rmseValue">-</h2>
+                    </div>
+
+                    <div class="metric-card">
+                        <span>R²</span>
+                        <h2 id="r2Value">-</h2>
+                    </div>
+
+                </div>
+
+                <h3>Benchmark Comparison</h3>
+
+                <table id="benchmarkTable">
+
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>MAE</th>
+                            <th>RMSE</th>
+                            <th>R²</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        <tr>
+                            <td>Selected Model</td>
+                            <td id="modelMae">-</td>
+                            <td id="modelRmse">-</td>
+                            <td id="modelR2">-</td>
+                        </tr>
+
+                        <tr>
+                            <td>Persistence</td>
+                            <td id="persMae">-</td>
+                            <td id="persRmse">-</td>
+                            <td id="persR2">-</td>
+                        </tr>
+
+                        <tr>
+                            <td>Moving Average</td>
+                            <td id="maMae">-</td>
+                            <td id="maRmse">-</td>
+                            <td id="maR2">-</td>
+                        </tr>
+
+                        <tr>
+                            <td>Linear Trend</td>
+                            <td id="trendMae">-</td>
+                            <td id="trendRmse">-</td>
+                            <td id="trendR2">-</td>
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+                <h3>Prediction Results</h3>
+
+                <div id="predictionPlot"></div>
+
+                <h3>Training History</h3>
+
+                <div id="trainingHistoryPlot"></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <footer id="footer">
+
+        <div class="footer-left">
+            <strong>Supervisor</strong><br>
+            Sascha Henke<br>
+            Univ.-Prof. Dr.-Ing. habil.<br>
+            📧 sascha.henke@hsu-hh.de<br>
+            📞 +49 40 6541-3351
+        </div>
+
+        <div class="footer-center">
+            Vorhersagbarkeit von Bodenverformungen
+        </div>
+
+        <div class="footer-right">
+            <strong>Research Associate</strong><br>
+            Jorge Enrique Caballero Castillo<br>
+            M.Sc. AI, M.Sc. Geology,<br>
+            B.Sc. Computer Science,<br>
+            B.Sc. Geotechnical Engineering<br>
+            📧 caballej@hsu-hh.de<br>
+            📞 +49 40 6541-2927
+        </div>
+
+    </footer>
+
+    <script src="/frontend/javascript/script-training.js"></script>
+
+</body>
+</html>

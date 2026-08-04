@@ -1,0 +1,175 @@
+.training-container{
+    width:95%;
+    margin:30px auto;
+    background:white;
+    border-radius:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.15);
+    padding:20px;
+}
+
+.training-container h2{
+    text-align:center;
+    margin-bottom:20px;
+    color:#333;
+}
+
+.training-layout{
+    display:grid;
+    grid-template-columns:350px 1fr;
+    gap:20px;
+}
+
+/* ================= CONFIGURATION ================= */
+
+.configuration-panel{
+    background:#f8f9fa;
+    border-radius:10px;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:15px;
+}
+
+.configuration-panel h3{
+    color:#8a1538;
+    margin-top:10px;
+}
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+}
+
+.form-group label{
+    font-weight:bold;
+    color:#333;
+}
+
+.form-group input,
+.form-group select{
+    padding:8px;
+    border:1px solid #ccc;
+    border-radius:6px;
+}
+
+#inputFeatures,
+#targetFeatures{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:6px;
+    max-height:250px;
+    overflow-y:auto;
+    padding:10px;
+    border:1px solid #ddd;
+    border-radius:6px;
+    background:white;
+}
+
+#inputFeatures label,
+#targetFeatures label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+#trainButton{
+    margin-top:15px;
+    padding:12px;
+    border:none;
+    border-radius:6px;
+    background:#8a1538;
+    color:white;
+    font-size:15px;
+    cursor:pointer;
+}
+
+#trainButton:hover{
+    background:#6f0f2d;
+}
+
+/* ================= RESULTS ================= */
+
+.results-panel{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+}
+
+.results-panel h3{
+    color:#8a1538;
+}
+
+/* ================= KPI ================= */
+
+.metrics-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:15px;
+}
+
+.metric-card{
+    background:white;
+    border-radius:10px;
+    padding:15px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.10);
+}
+
+.metric-card span{
+    display:block;
+    color:#666;
+    font-size:0.9rem;
+}
+
+.metric-card h2{
+    margin-top:8px;
+    color:#8a1538;
+}
+
+/* ================= BENCHMARK TABLE ================= */
+
+#benchmarkTable{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+}
+
+#benchmarkTable th{
+    background:#8a1538;
+    color:white;
+    padding:10px;
+}
+
+#benchmarkTable td{
+    padding:10px;
+    border-bottom:1px solid #ddd;
+}
+
+#benchmarkTable tr:hover{
+    background:#f5f5f5;
+}
+
+/* ================= PLOTS ================= */
+
+#predictionPlot,
+#trainingHistoryPlot{
+    width:100%;
+    min-height:500px;
+    background:white;
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.10);
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width:1200px){
+
+    .training-layout{
+        grid-template-columns:1fr;
+    }
+
+    .metrics-grid{
+        grid-template-columns:1fr;
+    }
+
+}

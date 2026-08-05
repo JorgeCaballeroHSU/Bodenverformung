@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from tempfile import NamedTemporaryFile
 
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sympy import group
 
 from database.database import *
@@ -15,10 +16,8 @@ from pydantic import BaseModel
 import pandas as pd
 
 import tensorflow as tf
+from services.auxiliary import build_model, update_prediction_experiment_table, sequence_generator, fetch_training_data
 
-# Defines the models that can be used for training
-from models.models import (LSTMForecaster, StackedLSTMForecaster, BiLSTMForecaster, EncoderDecoderLSTMForecaster,
-                           Seq2SeqAttentionLSTMForecaster, CNNLSTMForecaster, GRUForecaster, DeepARForecaster, TFTForecaster)
 
 # Defines the naive models for comparison
 from models.naive import (PersistenceForecast, MovingAverageForecast, LinearTrendForecast)
@@ -38,24 +37,36 @@ app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend"
 # HTML templates
 templates = Jinja2Templates(directory="templates")
 
+# API endpoints
+# calls the index.html file when the root endpoint is accessed
 @app.get("/")
 async def home():
+
+    # returns the index.html file from the frontend directory
     return FileResponse(str(FRONTEND_DIR / "index.html"))
 
+# calls the database.html file when the /database endpoint is accessed
 @app.get("/database")
 async def database_page():
+
+    # returns the database.html file from the frontend directory
     return FileResponse(str(FRONTEND_DIR / "database.html"))
 
-
+# calls the training.html file when the /training endpoint is accessed
 @app.get("/training")
 async def training_page():
+
+    # returns the training.html file from the frontend directory
     return FileResponse(str(FRONTEND_DIR / "training.html"))
 
-
+# calls the prediction.html file when the /prediction endpoint is accessed
 @app.get("/prediction")
 async def prediction_page():
+
+    # returns the prediction.html file from the frontend directory
     return FileResponse(str(FRONTEND_DIR / "prediction.html"))
 
+# checks if the files have already been uploaded to the database
 @app.post("/api/check-files")
 async def check_files(data: dict = Body(...)):
 
@@ -427,76 +438,185 @@ async def train_model(config: TrainRequest):
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
     model = build_model(config, len(inputs))
-    history = model.model.fit(dataset,epochs=config.epochs,verbose=1)
+    history = model.fit(dataset, epochs=config.epochs, verbose=1)
 
-    return {"message": "Training completed"}
+    # creates an evaluation dataset for testing
+    eval_X = []
+    eval_y = []
 
-    # actual = y_test[:,0].tolist()
+    for _, group in df.groupby("test_id"):
 
-    # predicted = predictions[:,0].tolist()
+        input_values = group[inputs].to_numpy(dtype=np.float32)
+        target_values = group[targets].to_numpy(dtype=np.float32)
 
-    # # metrics
-    # mae = mean_absolute_error(
-    #     y_test,
-    #     predictions,
-    #     multioutput="uniform_average"
-    # )
+        for i in range(
+            config.lookback_steps,
+            len(group) - config.horizon
+        ):
 
-    # rmse = np.sqrt(
-    #     mean_squared_error(
-    #         actual,
-    #         predictions,
-    #         multioutput="uniform_average"
-    #     )
-    # )
+            eval_X.append(
+                input_values[
+                    i-config.lookback_steps:i
+                ]
+            )
 
-    # r2 = r2_score(
-    #     actual,
-    #     predictions,
-    #     multioutput="uniform_average"
-    # )
+            eval_y.append(
+                target_values[
+                    i+config.horizon
+                ]
+            )
 
-    # return {
+            if len(eval_X) >= 5000:
+                break
 
-    #     "mae": float(mae),
-    #     "rmse": float(rmse),
-    #     "r2": float(r2),
+        if len(eval_X) >= 5000:
+            break
 
-    #     "persistence": {
-    #         "mae": 0.071,
-    #         "rmse": 0.105,
-    #         "r2": 0.68
-    #     },
+    eval_X = np.asarray(eval_X, dtype=np.float32)
+    eval_y = np.asarray(eval_y, dtype=np.float32)
 
-    #     "moving_average": {
-    #         "mae": 0.055,
-    #         "rmse": 0.089,
-    #         "r2": 0.75
-    #     },
+    predictions = model.predict(eval_X)
 
-    #     "linear_trend": {
-    #         "mae": 0.062,
-    #         "rmse": 0.092,
-    #         "r2": 0.73
-    #     },
+    # add benchmarking with naive models
+    persistence = PersistenceForecast()
+    moving_average = MovingAverageForecast()
+    linear_trend = LinearTrendForecast()
 
-    #     "actual": actual[:500],
-    #     "predicted": predicted[:500],
+    pers_pred = []
+    ma_pred = []
+    trend_pred = []
 
-    #     "naive": [
-    #         10,10,11,12,13,14,15,16,17
-    #     ],
+    for sample in eval_X:
 
-    #     "loss": [
-    #         float(x)
-    #         for x in history.history["loss"]
-    #     ],
+        # use first target variable from the sequence
+        series = sample[:, 0]
 
-    #     "val_loss": [
-    #         float(x)
-    #         for x in history.history["val_loss"]
-    #     ]
-    # }
+        pers_pred.append(
+            persistence.predict(series)
+        )
+
+        ma_pred.append(
+            moving_average.predict(series)
+        )
+
+        trend_pred.append(
+            linear_trend.predict(series)
+        )
+
+    pers_pred = np.array(pers_pred)
+    ma_pred = np.array(ma_pred)
+    trend_pred = np.array(trend_pred)
+
+    actual = eval_y[:, 0]
+
+    #compute metrics
+    mae = mean_absolute_error(
+        eval_y,
+        predictions
+    )
+
+    rmse = np.sqrt(
+        mean_squared_error(
+            eval_y,
+            predictions
+        )
+    )
+
+    r2 = r2_score(
+        eval_y,
+        predictions
+    )
+
+    # computes metrics for persistence model
+    pers_mae = mean_absolute_error(
+        actual,
+        pers_pred
+    )
+
+    pers_rmse = np.sqrt(
+        mean_squared_error(
+            actual,
+            pers_pred
+        )
+    )
+
+    pers_r2 = r2_score(
+        actual,
+        pers_pred
+    )
+
+    # computes metrics for moving average model
+    ma_mae = mean_absolute_error(
+        actual,
+        ma_pred
+    )
+
+    ma_rmse = np.sqrt(
+        mean_squared_error(
+            actual,
+            ma_pred
+        )
+    )
+
+    ma_r2 = r2_score(
+        actual,
+        ma_pred
+    )
+
+    # computes metrics for linear trend model
+    trend_mae = mean_absolute_error(
+        actual,
+        trend_pred
+    )
+
+    trend_rmse = np.sqrt(
+        mean_squared_error(
+            actual,
+            trend_pred
+        )
+    )
+
+    trend_r2 = r2_score(
+        actual,
+        trend_pred
+    )
+
+    return {
+        "mae": float(mae),
+        "rmse": float(rmse),
+        "r2": float(r2),
+
+        "actual": actual.tolist()[:500],
+        "predicted": predictions[:, 0].tolist()[:500],
+
+        "loss": [
+            float(x)
+            for x in history.history["loss"]
+        ],
+
+        "val_loss": history.history.get(
+            "val_loss",
+            []
+        ),
+
+        "persistence": {
+            "mae": float(pers_mae),
+            "rmse": float(pers_rmse),
+            "r2": float(pers_r2)
+        },
+
+        "moving_average": {
+            "mae": float(ma_mae),
+            "rmse": float(ma_rmse),
+            "r2": float(ma_r2)
+        },
+
+        "linear_trend": {
+            "mae": float(trend_mae),
+            "rmse": float(trend_rmse),
+            "r2": float(trend_r2)
+        }
+    }
 
 # available features endpoint
 @app.get("/api/features")
@@ -611,151 +731,6 @@ async def training_metadata():
 
     }
 
-# dataset loader
-def fetch_training_data():
-
-    db = Database()
-    db.openConnection()
-
-    try:
-
-        return db.fetchInfo(
-            """
-            SELECT
-
-                measurements.test_id,
-
-                measurements.time_s,
-
-                measurements.force_kn,
-                measurements.displacement_mm,
-                measurements.sample_height_mm,
-                measurements.strain_ratio,
-                measurements.strain_pct,
-                measurements.stress_kpa,
-
-                samples.water_content,
-                samples.density_kg_m3,
-                samples.initial_mass_kg
-
-            FROM measurements
-
-            INNER JOIN tests
-                ON tests.id = measurements.test_id
-
-            INNER JOIN samples
-                ON samples.id = tests.sample_id
-
-            ORDER BY
-                measurements.test_id,
-                measurements.time_s
-            """
-        )
-
-    finally:
-
-        db.closeConnection()
 
 
-# sequence generator for training
-def sequence_generator(df, inputs, targets, lookback, horizon):
 
-    total_tests = df["test_id"].nunique()
-    total_sequences = 0
-
-    for idx, (_, group) in enumerate(df.groupby("test_id"), start=1):
-
-        print(
-            f"Processing test {idx}/{total_tests}, "
-            f"rows={len(group)}"
-        )
-
-        input_values = group[inputs].to_numpy(dtype=np.float32)
-        target_values = group[targets].to_numpy(dtype=np.float32)
-
-        for i in range(
-            lookback,
-            len(group) - horizon
-        ):
-            total_sequences += 1
-
-            if total_sequences % 50000 == 0:
-                print(f"{total_sequences:,} sequences generated")
-
-
-            yield (
-                input_values[i-lookback:i],
-                target_values[i+horizon]
-            )
-
-def build_model(config, n_features):
-
-    if config.model == "LSTMForecaster":
-
-        return LSTMForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
-        )
-
-    elif config.model == "StackedLSTMForecaster":
-
-        return StackedLSTMForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
-        )
-
-    elif config.model == "BiLSTMForecaster":
-
-        return BiLSTMForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
-        )
-
-    elif config.model == "CNNLSTMForecaster":
-
-        return CNNLSTMForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
-        )
-
-    elif config.model == "GRUForecaster":
-
-        return GRUForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
-        )
-
-    elif config.model == "DeepARForecaster":
-
-        return DeepARForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
-        )
-
-    raise ValueError(
-        f"Unsupported model: {config.model}"
-    )

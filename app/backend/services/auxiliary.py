@@ -2,8 +2,10 @@
 from database.database import Database
 import json
 from datetime import datetime
-import dataframe as pd
+import pandas as pd
 import numpy as np
+from models.naive import *
+from sklearn.metrics import (mean_absolute_error, mean_squared_error, r2_score)
 
 # Defines the models that can be used for training
 from models.models import (LSTMForecaster, StackedLSTMForecaster, BiLSTMForecaster, EncoderDecoderLSTMForecaster,
@@ -106,8 +108,8 @@ def sequence_generator(df: pd.DataFrame, inputs: list, targets: list, lookback: 
             # prints the total number of sequences generated every 50,000 sequences to provide feedback on the progress of sequence generation
             if total_sequences % 50000 == 0: print(f"{total_sequences:,} sequences generated")
 
-            # yields a tuple containing the input sequence (from i-lookback to i) and the corresponding target value (at i+horizon)
-            yield (input_values[i-lookback:i], target_values[i+horizon])
+            # yields a tuple containing the input sequence (from i-lookback to i) and the corresponding target value (at i+horizon-1)
+            yield (input_values[i-lookback:i], target_values[i+horizon-1])
 
 
 # builds the model based on the configuration provided
@@ -201,8 +203,11 @@ def build_model(config: object, n_features: int)->object:
     raise ValueError(f"Unsupported model: {config.model}")
 
 # updates database prediction_experiment table with the new experiment
-def update_prediction_experiment_table(config: object, eval_X: object, mae: float, rmse: float, 
-                                       r2: float, pers_mae: float, pers_rmse: float, pers_r2: float)->int:
+def update_prediction_experiment_table(model_type, prediction_target, prediction_horizon,lookback_steps,
+                                       training_samples, validation_samples, test_samples, train_split,
+                                       validation_split, test_split, mae, rmse, r2, persistence_mae, persistence_rmse,
+                                       persistence_r2, moving_average_mae, moving_average_rmse, moving_average_r2,
+                                       linear_trend_mae, linear_trend_rmse, linear_trend_r2):
     """
     Updates the prediction_experiment table in the database with the new experiment details.
     Arguments:
@@ -224,30 +229,96 @@ def update_prediction_experiment_table(config: object, eval_X: object, mae: floa
         # opens a connection to the database
         db.openConnection()
 
+        experiment_config = json.dumps({
+            "train_split": train_split,
+            "validation_split": validation_split,
+            "test_split": test_split,
+
+            "prediction_horizon": prediction_horizon,
+            "lookback_steps": lookback_steps
+        })
+
+
+        # creates an experiment name
+        experiment_name = (f"{model_type}_{datetime.now():%Y%m%d_%H%M%S}")
+
+        # defines the date of creation of the experiment
+        created_at = datetime.now().isoformat()
+
         # inserts the new experiment details into the prediction_experiments table and retrieves the experiment_id
         experiment_id, _ = db.insertItemsTable(
             """
-            INSERT INTO prediction_experiments
-            (experiment_name, model_type, prediction_target, prediction_horizon, lookback_steps, training_samples,
-            mae, rmse, r2, benchmark_mae, benchmark_rmse, benchmark_r2, created_at, experiment_config )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                f"{config.model}_{datetime.now()}", config.model, ",".join(config.targets), config.horizon,
-                config.lookback_steps, len(eval_X), float(mae), float(rmse), float(r2), float(pers_mae),
-                float(pers_rmse), float(pers_r2), datetime.now().isoformat(),
-                json.dumps(
-                    {
-                        "inputs": config.inputs,
-                        "static_inputs": config.static_inputs,
-                        "targets": config.targets,
-                        "epochs": config.epochs,
-                        "batch_size": config.batch_size,
-                        "learning_rate": config.learning_rate,
-                        "dropout": config.dropout,
-                        "units": config.units
-                    }
+                INSERT INTO prediction_experiments
+                (
+                    experiment_name,
+                    model_type,
+                    prediction_target,
+                    prediction_horizon,
+                    lookback_steps,
+
+                    training_samples,
+                    validation_samples,
+                    test_samples,
+
+                    mae,
+                    rmse,
+                    r2,
+
+                    persistence_mae,
+                    persistence_rmse,
+                    persistence_r2,
+
+                    moving_average_mae,
+                    moving_average_rmse,
+                    moving_average_r2,
+
+                    linear_trend_mae,
+                    linear_trend_rmse,
+                    linear_trend_r2,
+
+                    created_at,
+                    experiment_config
                 )
-            )
+                VALUES (
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?
+                )
+                """,
+            (
+                experiment_name,
+                model_type,
+                prediction_target,
+                prediction_horizon,
+                lookback_steps,
+
+                training_samples,
+                validation_samples,
+                test_samples,
+
+                mae,
+                rmse,
+                r2,
+
+                persistence_mae,
+                persistence_rmse,
+                persistence_r2,
+
+                moving_average_mae,
+                moving_average_rmse,
+                moving_average_r2,
+
+                linear_trend_mae,
+                linear_trend_rmse,
+                linear_trend_r2,
+                
+                created_at,
+                experiment_config
+                )
         )
 
         # returns the experiment_id of the newly inserted experiment
@@ -301,3 +372,120 @@ def store_prediction_samples(experiment_id: int, actual: list, predictions: list
         # closes the database connection
         db.closeConnection()
 
+def build_naive_predictions(test_df, target_column, lookback_steps, horizon):
+
+    # creates object of the naive forecast functions
+    persistence = PersistenceForecast()
+    moving_average = MovingAverageForecast()
+    linear_trend = LinearTrendForecast()
+
+    
+    actual = []
+
+    pers_pred = []
+    ma_pred = []
+    trend_pred = []
+
+    for _, group in test_df.groupby("test_id"):
+
+        series = group[target_column].to_numpy(dtype=np.float32)
+
+        for i in range(lookback_steps, len(group) - horizon):
+
+            history = series[i - lookback_steps:i]
+
+            actual.append(series[i + horizon-1])
+
+            pers_pred.append(persistence.predict(history))
+
+            ma_pred.append(moving_average.predict(history))
+
+            trend_pred.append(linear_trend.predict(history))
+
+    return (np.array(actual), np.array(pers_pred),np.array(ma_pred), np.array(trend_pred))
+
+# buils a one specimen dataset for plotting purposes
+def build_plot_sample(model, test_df, inputs, targets, lookback_steps, horizon, target_scaler):
+
+    first_test_id = (sorted(test_df["test_id"].unique())[0])
+
+    group = test_df[test_df["test_id"] == first_test_id]
+
+    eval_X = []
+    eval_y = []
+
+    input_values = group[inputs].to_numpy(dtype=np.float32)
+
+    target_values = group[targets].to_numpy(dtype=np.float32)
+
+    for i in range(lookback_steps, len(group) - horizon):
+
+        eval_X.append(input_values[i-lookback_steps:i])
+
+        eval_y.append(target_values[i+horizon-1])
+
+    eval_X = np.asarray(eval_X)
+    eval_y = np.asarray(eval_y)
+
+    predictions = model.predict(eval_X)
+    predictions = (target_scaler.inverse_transform(predictions))
+    eval_y = (target_scaler.inverse_transform(eval_y))
+
+    return {
+        "test_id": int(first_test_id),
+        "actual": eval_y[:,0].tolist(),
+        "predicted": predictions[:,0].tolist()
+    }
+
+# per-test metrics
+def evaluate_model_by_test(
+        model,
+        test_df,
+        inputs,
+        targets,
+        lookback_steps,
+        horizon,
+        target_scaler):
+
+    results = []
+
+    all_mae = []
+    all_rmse = []
+    all_r2 = []
+
+    for test_id, group in test_df.groupby("test_id"):
+
+        eval_X = []
+        eval_y = []
+
+        input_values = group[inputs].to_numpy(dtype=np.float32)
+        target_values = group[targets].to_numpy(dtype=np.float32)
+
+        for i in range(lookback_steps,len(group) - horizon):
+
+            eval_X.append(input_values[i-lookback_steps:i])
+            eval_y.append(target_values[i+horizon-1])
+
+        if len(eval_X) == 0:
+            continue
+
+        eval_X = np.asarray(eval_X,dtype=np.float32)
+        eval_y = np.asarray(eval_y, dtype=np.float32)
+
+        predictions = model.predict(eval_X)
+        predictions = (target_scaler.inverse_transform(predictions))
+
+        eval_y = (target_scaler.inverse_transform(eval_y))
+
+        mae = mean_absolute_error(eval_y,predictions)
+        rmse = np.sqrt(mean_squared_error(eval_y, predictions))
+
+        r2 = r2_score(eval_y,predictions)
+
+        results.append({"test_id": int(test_id),"mae": float(mae), "rmse": float(rmse), "r2": float(r2)})
+
+        all_mae.append(mae)
+        all_rmse.append(rmse)
+        all_r2.append(r2)
+
+    return {"mae": float(np.mean(all_mae)),"rmse": float(np.mean(all_rmse)),"r2": float(np.mean(all_r2)),"details": results}

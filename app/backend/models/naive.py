@@ -8,6 +8,10 @@ class PersistenceForecast:
     # provides prediction 
     def predict(self, series):
 
+        if len(series) == 0:
+
+            return 0.0
+        
         return series[-1]
 
 # implements the moving average forecast 
@@ -21,6 +25,10 @@ class MovingAverageForecast:
     # calculates the predicted value
     def predict(self, series):
 
+        if len(series) == 0:
+
+            return 0.0
+
         # returns the moving average according to the provide window
         return np.mean(series[-self.window:])
 
@@ -29,6 +37,12 @@ class LinearTrendForecast:
 
     # gers the predictions
     def predict(self, series):
+
+        if len(series) == 0:
+            return 0.0
+            
+        if len(series) == 1:
+            return series[-1]
 
         # gets the values to calculate the slope
         last = series[-1]

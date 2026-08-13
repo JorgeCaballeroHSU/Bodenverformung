@@ -1,5 +1,3 @@
-console.log("Database script loaded - VERSION 999");
-
 let selectedExcelFiles = [];
 
 /*** Wait until page is loaded ***/
@@ -418,22 +416,35 @@ async function loadCorrelationMatrix(){
     const data =
         await response.json();
 
+    const displayNames = {
+        force_kn: "Force (kN)",
+        displacement_mm: "Displacement (mm)",
+        sample_height_mm: "Sample Height (mm)",
+        strain_ratio: "Strain Ratio",
+        strain_pct: "Strain (%)",
+        stress_kpa: "Stress (kPa)"
+    };
+
+    const labels = data.columns.map(
+        col => displayNames[col] || col
+    );
+
     Plotly.newPlot(
         "correlationMatrix",
         [
             {
-                z:data.matrix,
-                x:data.columns,
-                y:data.columns,
-                type:"heatmap",
-                colorscale:"Viridis"
+                z: data.matrix,
+                x: labels,
+                y: labels,
+                type: "heatmap",
+                colorscale: "Viridis"
             }
         ],
         {
-            title:"Correlation Matrix"
+            title: "Correlation Matrix"
         },
         {
-            responsive:true
+            responsive: true
         }
     );
 

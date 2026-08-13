@@ -290,27 +290,46 @@ class Schema(Database):
             unit TEXT
         );"""
 
-        prediction_experiments="""CREATE TABLE IF NOT EXISTS prediction_experiments (
+        prediction_experiments = """
+            CREATE TABLE IF NOT EXISTS prediction_experiments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+
             feature_set_id INTEGER,
+
             experiment_name TEXT,
             model_type TEXT,
+
             prediction_target TEXT,
             prediction_horizon INTEGER,
             lookback_steps INTEGER,
+
             training_samples INTEGER,
             validation_samples INTEGER,
             test_samples INTEGER,
+
             mae REAL,
             rmse REAL,
             r2 REAL,
-            benchmark_mae REAL,
-            benchmark_rmse REAL,
-            benchmark_r2 REAL,
+
+            persistence_mae REAL,
+            persistence_rmse REAL,
+            persistence_r2 REAL,
+
+            moving_average_mae REAL,
+            moving_average_rmse REAL,
+            moving_average_r2 REAL,
+
+            linear_trend_mae REAL,
+            linear_trend_rmse REAL,
+            linear_trend_r2 REAL,
+
             created_at TEXT,
             experiment_config TEXT,
-            FOREIGN KEY (feature_set_id) REFERENCES feature_sets(id)
-        );"""
+
+            FOREIGN KEY (feature_set_id)
+                REFERENCES feature_sets(id)
+        );
+        """
 
         experiment_features="""CREATE TABLE IF NOT EXISTS experiment_features (
             experiment_id INTEGER,

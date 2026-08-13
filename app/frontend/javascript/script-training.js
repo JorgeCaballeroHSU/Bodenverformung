@@ -5,9 +5,108 @@ document.addEventListener(
     initializeTrainingPage
 );
 
+async function loadLatestExperiment(){
+
+    try{
+
+        const response =
+            await fetch(
+                "/api/latest-experiment"
+            );
+
+        const experiment =
+            await response.json();
+
+        if(!experiment){
+            return;
+        }
+
+        document.getElementById(
+            "maeValue"
+        ).innerText =
+            Number(
+                experiment.mae
+            ).toFixed(4);
+
+        document.getElementById(
+            "rmseValue"
+        ).innerText =
+            Number(
+                experiment.rmse
+            ).toFixed(4);
+
+        document.getElementById(
+            "r2Value"
+        ).innerText =
+            Number(
+                experiment.r2
+            ).toFixed(4);
+
+        populateBenchmarkFromExperiment(experiment)
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Unable to load latest experiment",
+            error
+        );
+
+    }
+
+}
+
+function populateBenchmarkFromExperiment(
+    experiment
+){
+    document.getElementById(
+        "modelMae"
+    ).innerText =
+        Number(
+            experiment.mae
+        ).toFixed(4);
+
+    document.getElementById(
+        "modelRmse"
+    ).innerText =
+        Number(
+            experiment.rmse
+        ).toFixed(4);
+
+    document.getElementById(
+        "modelR2"
+    ).innerText =
+        Number(
+            experiment.r2
+        ).toFixed(4);
+
+    document.getElementById(
+        "persMae"
+    ).innerText =
+        Number(
+            experiment.benchmark_mae
+        ).toFixed(4);
+
+    document.getElementById(
+        "persRmse"
+    ).innerText =
+        Number(
+            experiment.benchmark_rmse
+        ).toFixed(4);
+
+    document.getElementById(
+        "persR2"
+    ).innerText =
+        Number(
+            experiment.benchmark_r2
+        ).toFixed(4);
+}
+
 function initializeTrainingPage(){
 
     preselectFeatures();
+    loadLatestExperiment();
 
     const trainButton =
         document.getElementById(
@@ -106,6 +205,27 @@ function getConfiguration(){
         targets:
             targets,
 
+        train_split:
+            parseFloat(
+                document.getElementById(
+                    "trainSplit"
+                ).value
+            ),
+
+        validation_split:
+            parseFloat(
+                document.getElementById(
+                    "validationSplit"
+                ).value
+            ),
+
+        test_split:
+            parseFloat(
+                document.getElementById(
+                    "testSplit"
+                ).value
+            ),
+
         epochs:
             parseInt(
                 document.getElementById(
@@ -140,6 +260,7 @@ function getConfiguration(){
                     "units"
                 ).value
             )
+        
     };
 }
 
@@ -162,6 +283,20 @@ async function trainModel(){
 
         alert(
             "Select at least one target variable."
+        );
+
+        return;
+    }
+
+    const totalSplit =
+        config.train_split +
+        config.validation_split +
+        config.test_split;
+
+    if(Math.abs(totalSplit - 100) > 0.01){
+
+        alert(
+            "Train, Validation and Test percentages must add up to 100."
         );
 
         return;

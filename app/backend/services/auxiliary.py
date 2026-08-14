@@ -372,7 +372,7 @@ def store_prediction_samples(experiment_id: int, actual: list, predictions: list
         # closes the database connection
         db.closeConnection()
 
-def build_naive_predictions(test_df, target_column, lookback_steps, horizon):
+def build_naive_predictions(test_df, target_columns, lookback_steps, horizon):
 
     # creates object of the naive forecast functions
     persistence = PersistenceForecast()
@@ -388,26 +388,42 @@ def build_naive_predictions(test_df, target_column, lookback_steps, horizon):
 
     for _, group in test_df.groupby("test_id"):
 
-        series = group[target_column].to_numpy(dtype=np.float32)
+        target_values = group[target_columns].to_numpy(dtype=np.float32)
 
         for i in range(lookback_steps, len(group) - horizon):
 
-            history = series[i - lookback_steps:i]
+            history = target_values[i-lookback_steps:i]
 
-            actual.append(series[i + horizon-1])
+            actual.append(target_values[i+horizon-1])
 
-            pers_pred.append(persistence.predict(history))
+            pers_row = []
+            ma_row = []
+            trend_row = []
 
-            ma_pred.append(moving_average.predict(history))
+            for j in range(history.shape[1]):
 
-            trend_pred.append(linear_trend.predict(history))
+                series = history[:, j]
 
-    return (np.array(actual), np.array(pers_pred),np.array(ma_pred), np.array(trend_pred))
+                pers_row.append(persistence.predict(series))
+                ma_row.append(moving_average.predict(series))
+                trend_row.append(linear_trend.predict(series))
+
+            pers_pred.append(pers_row)
+            ma_pred.append(ma_row)
+            trend_pred.append(trend_row)
+    return (np.asarray(actual,dtype=np.float32), np.asarray(pers_pred,dtype=np.float32), np.asarray(ma_pred,dtype=np.float32),
+            np.asarray(trend_pred,dtype=np.float32))
 
 # buils a one specimen dataset for plotting purposes
 def build_plot_sample(model, test_df, inputs, targets, lookback_steps, horizon, target_scaler):
 
     first_test_id = (sorted(test_df["test_id"].unique())[0])
+
+    if test_df.empty:
+        return {
+            "test_id": None,
+            "plots": {}
+        }
 
     group = test_df[test_df["test_id"] == first_test_id]
 
@@ -431,61 +447,16 @@ def build_plot_sample(model, test_df, inputs, targets, lookback_steps, horizon, 
     predictions = (target_scaler.inverse_transform(predictions))
     eval_y = (target_scaler.inverse_transform(eval_y))
 
+    plots = {}
+
+    for idx, target in enumerate(targets):
+
+        plots[target] = {
+            "actual":eval_y[:,idx].tolist(),
+            "predicted":predictions[:,idx].tolist()
+        }
+
     return {
         "test_id": int(first_test_id),
-        "actual": eval_y[:,0].tolist(),
-        "predicted": predictions[:,0].tolist()
+        "plots":plots
     }
-
-# per-test metrics
-def evaluate_model_by_test(
-        model,
-        test_df,
-        inputs,
-        targets,
-        lookback_steps,
-        horizon,
-        target_scaler):
-
-    results = []
-
-    all_mae = []
-    all_rmse = []
-    all_r2 = []
-
-    for test_id, group in test_df.groupby("test_id"):
-
-        eval_X = []
-        eval_y = []
-
-        input_values = group[inputs].to_numpy(dtype=np.float32)
-        target_values = group[targets].to_numpy(dtype=np.float32)
-
-        for i in range(lookback_steps,len(group) - horizon):
-
-            eval_X.append(input_values[i-lookback_steps:i])
-            eval_y.append(target_values[i+horizon-1])
-
-        if len(eval_X) == 0:
-            continue
-
-        eval_X = np.asarray(eval_X,dtype=np.float32)
-        eval_y = np.asarray(eval_y, dtype=np.float32)
-
-        predictions = model.predict(eval_X)
-        predictions = (target_scaler.inverse_transform(predictions))
-
-        eval_y = (target_scaler.inverse_transform(eval_y))
-
-        mae = mean_absolute_error(eval_y,predictions)
-        rmse = np.sqrt(mean_squared_error(eval_y, predictions))
-
-        r2 = r2_score(eval_y,predictions)
-
-        results.append({"test_id": int(test_id),"mae": float(mae), "rmse": float(rmse), "r2": float(r2)})
-
-        all_mae.append(mae)
-        all_rmse.append(rmse)
-        all_r2.append(r2)
-
-    return {"mae": float(np.mean(all_mae)),"rmse": float(np.mean(all_rmse)),"r2": float(np.mean(all_r2)),"details": results}

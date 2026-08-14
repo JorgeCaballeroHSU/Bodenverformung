@@ -85,21 +85,63 @@ function populateBenchmarkFromExperiment(
         "persMae"
     ).innerText =
         Number(
-            experiment.benchmark_mae
+            experiment.persistence_mae
         ).toFixed(4);
 
     document.getElementById(
         "persRmse"
     ).innerText =
         Number(
-            experiment.benchmark_rmse
+            experiment.persistence_rmse
         ).toFixed(4);
 
     document.getElementById(
         "persR2"
     ).innerText =
         Number(
-            experiment.benchmark_r2
+            experiment.persistence_r2
+        ).toFixed(4);
+
+    document.getElementById(
+        "maMae"
+    ).innerText =
+        Number(
+            experiment.moving_average_mae
+        ).toFixed(4);
+
+    document.getElementById(
+        "maRmse"
+    ).innerText =
+        Number(
+            experiment.moving_average_rmse
+        ).toFixed(4);
+
+    document.getElementById(
+        "maR2"
+    ).innerText =
+        Number(
+            experiment.moving_average_r2
+        ).toFixed(4);
+
+    document.getElementById(
+        "trendMae"
+    ).innerText =
+        Number(
+            experiment.linear_trend_mae
+        ).toFixed(4);
+
+    document.getElementById(
+        "trendRmse"
+    ).innerText =
+        Number(
+            experiment.linear_trend_rmse
+        ).toFixed(4);
+
+    document.getElementById(
+        "trendR2"
+    ).innerText =
+        Number(
+            experiment.linear_trend_r2
         ).toFixed(4);
 }
 
@@ -390,87 +432,119 @@ function updateBenchmarkTable(
     document.getElementById(
         "persMae"
     ).innerText =
-        result.persistence.mae;
+        result.persistence.mae.toFixed(4);
 
     document.getElementById(
         "persRmse"
     ).innerText =
-        result.persistence.rmse;
+        result.persistence.rmse.toFixed(4);
 
     document.getElementById(
         "persR2"
     ).innerText =
-        result.persistence.r2;
+        result.persistence.r2.toFixed(4);
 
     document.getElementById(
         "maMae"
     ).innerText =
-        result.moving_average.mae;
+        result.moving_average.mae.toFixed(4);
 
     document.getElementById(
         "maRmse"
     ).innerText =
-        result.moving_average.rmse;
+        result.moving_average.rmse.toFixed(4);
 
     document.getElementById(
         "maR2"
     ).innerText =
-        result.moving_average.r2;
+        result.moving_average.r2.toFixed(4);
 
     document.getElementById(
         "trendMae"
     ).innerText =
-        result.linear_trend.mae;
+        result.linear_trend.mae.toFixed(4);
 
     document.getElementById(
         "trendRmse"
     ).innerText =
-        result.linear_trend.rmse;
+        result.linear_trend.rmse.toFixed(4);
 
     document.getElementById(
         "trendR2"
     ).innerText =
-        result.linear_trend.r2;
+        result.linear_trend.r2.toFixed(4);
 
 }
 
-function renderPredictionPlot(
-    result
-){
+function renderPredictionPlot(result){
 
-    Plotly.newPlot(
-        "predictionPlot",
-        [
+    const selector = document.getElementById("plotTarget");
+
+    if(!result.plots){
+        return;
+    }
+
+    const targets = Object.keys( result.plots);
+
+    if(targets.length === 0){
+        return;
+    }
+
+    selector.innerHTML = "";
+
+    if(targets.length === 0){
+        return;
+    }
+
+
+    targets.forEach(target => {
+
+        selector.add(new Option(target, target));
+    });
+
+    function drawTarget( target ){
+
+        Plotly.newPlot(
+            "predictionPlot",
+            [
+                {
+                    y:
+                        result.plots[target].actual,
+                    mode:"lines",
+                    name:"Actual"
+                },
+
+                {
+                    y:result.plots[target].predicted,
+
+                    mode:"lines",
+                    name:"Predicted"
+                }
+
+            ],
 
             {
-                y:result.actual,
-                mode:"lines",
-                name:"Actual"
+                title:`Actual vs Predicted: ${target}`,
+                paper_bgcolor:"#fff",
+                plot_bgcolor:"#fff"
+
             },
 
-            {
-                y:result.predicted,
-                mode:"lines",
-                name:"Model"
-            },
+            {responsive:true}
 
-            {
-                y:result.naive,
-                mode:"lines",
-                name:"Naive"
-            }
+        );
 
-        ],
+    }
 
-        {
-            title:
-                "Actual vs Predictions"
-        },
-
-        {
-            responsive:true
-        }
+    drawTarget(
+        targets[0]
     );
+
+    selector.onchange =
+        () =>
+            drawTarget(
+                selector.value
+            );
 
 }
 

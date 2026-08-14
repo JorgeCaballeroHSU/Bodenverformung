@@ -17,7 +17,7 @@ import pandas as pd
 
 import tensorflow as tf
 from services.auxiliary import (build_model, update_prediction_experiment_table, sequence_generator, 
-fetch_training_data, build_naive_predictions, build_plot_sample, evaluate_model_by_test)
+fetch_training_data, build_naive_predictions, build_plot_sample)
 
 # Creates database according to defined schema
 Schema()
@@ -495,8 +495,8 @@ async def train_model(config: TrainRequest):
     test_df = df[df["test_id"].isin(test_ids)].copy()
 
     # calculation of benchmark performance
-    benchmark_actual, pers_pred, ma_pred,trend_pred = build_naive_predictions(test_df, targets[0], 
-                                                                              config.lookback_steps, config.horizon)
+    benchmark_actual, pers_pred, ma_pred, trend_pred = (build_naive_predictions(
+        test_df, targets, config.lookback_steps, config.horizon))
 
     # fit scalers ONLY on training data
     input_scaler = StandardScaler()
@@ -589,11 +589,31 @@ async def train_model(config: TrainRequest):
 
     #compute metrics
     # calculates the mean absolute error regression loss
-    evaluation = evaluate_model_by_test(model, test_df, inputs, targets, config.lookback_steps, config.horizon, target_scaler)
+    eval_X = []
+    eval_y = []
 
-    mae = evaluation["mae"]
-    rmse = evaluation["rmse"]
-    r2 = evaluation["r2"]
+    for _, group in test_df.groupby("test_id"):
+
+        input_values = group[inputs].to_numpy(dtype=np.float32)
+        target_values = group[targets].to_numpy(dtype=np.float32)
+
+        for i in range(config.lookback_steps,len(group) - config.horizon):
+
+            eval_X.append(input_values[i-config.lookback_steps:i])
+            eval_y.append(target_values[i+config.horizon-1])
+
+    eval_X = np.asarray(eval_X, dtype=np.float32)
+    eval_y = np.asarray(eval_y, dtype=np.float32)
+
+    predictions = model.predict(eval_X)
+    predictions = (target_scaler.inverse_transform(predictions))
+
+    eval_y = (target_scaler.inverse_transform(eval_y))
+
+    mae = mean_absolute_error(eval_y, predictions)
+    rmse = np.sqrt(mean_squared_error(eval_y, predictions))
+
+    r2 = r2_score(eval_y,predictions)
 
     # computes metrics for persistence model
     # calculates the mean absolute error regression loss
@@ -640,8 +660,7 @@ async def train_model(config: TrainRequest):
         "rmse": float(rmse),
         "r2": float(r2),
 
-        "actual": plot_data["actual"],
-        "predicted": plot_data["predicted"],   
+        "plots":plot_data["plots"],  
 
         "loss": [
             float(x)
@@ -670,8 +689,6 @@ async def train_model(config: TrainRequest):
             "rmse": float(trend_rmse),
             "r2": float(trend_r2)
         },
-
-        "test_metrics": evaluation["details"]
     }
 
 # available features endpoint

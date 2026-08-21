@@ -113,148 +113,178 @@ def sequence_generator(df: pd.DataFrame, inputs: list, targets: list, lookback: 
 
 
 # builds the model based on the configuration provided
-def build_model(config: object, n_features: int)->object:
-    """
-    Builds and returns the model based on the configuration provided.
-    Arguments:
-    - config: The configuration object containing model details.
-    - n_features: The number of features in the input data.
-    Returns the initialized model."""
+def build_model(
+        config,
+        n_features: int,
+        lookback_steps: int,
+        learning_rate: float,
+        dropout: float,
+        units: int):
 
-    # checks the model type specified in the configuration and initializes the corresponding model with the provided parameters
+    common_arguments = {
+        "input_steps":
+            lookback_steps,
+
+        "n_features":
+            n_features,
+
+        "n_targets":
+            len(config.targets),
+
+        "units":
+            units,
+
+        "dropout":
+            dropout,
+
+        "learning_rate":
+            learning_rate
+    }
+
     if config.model == "LSTMForecaster":
 
-        # initializes and returns an instance of the LSTMForecaster model with the specified parameters
         return LSTMForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
+            **common_arguments
         )
 
-    # checks if the model type is "EncoderDecoderLSTMForecaster" and initializes the corresponding model
-    elif config.model == "StackedLSTMForecaster":
+    if config.model == "StackedLSTMForecaster":
 
-        # initializes and returns an instance of the StackedLSTMForecaster model with the specified parameters
         return StackedLSTMForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
+            **common_arguments
         )
 
-    # checks if the model type is "BiLSTMForecaster" and initializes the corresponding model
-    elif config.model == "BiLSTMForecaster":
+    if config.model == "BiLSTMForecaster":
 
-        # initializes and returns an instance of the BiLSTMForecaster model with the specified parameters
         return BiLSTMForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
+            **common_arguments
         )
 
-    # checks if the model type is "EncoderDecoderLSTMForecaster" and initializes the corresponding model
-    elif config.model == "CNNLSTMForecaster":
+    if config.model == "CNNLSTMForecaster":
 
-        # initializes and returns an instance of the CNNLSTMForecaster model with the specified parameters
         return CNNLSTMForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
+            **common_arguments
         )
 
-    # checks if the model type is "Seq2SeqAttentionLSTMForecaster" and initializes the corresponding model
-    elif config.model == "GRUForecaster":
+    if config.model == "GRUForecaster":
 
-        # initializes and returns an instance of the GRUForecaster model with the specified parameters
         return GRUForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
+            **common_arguments
         )
 
-    # checks if the model type is "DeepARForecaster" and initializes the corresponding model
-    elif config.model == "DeepARForecaster":
+    if config.model == "DeepARForecaster":
 
-        # initializes and returns an instance of the DeepARForecaster model with the specified parameters
         return DeepARForecaster(
-            input_steps=config.lookback_steps,
-            n_features=n_features,
-            n_targets=len(config.targets),
-            units=config.units,
-            dropout=config.dropout,
-            learning_rate=config.learning_rate
+            **common_arguments
         )
 
-    # checks if the model type is "TFTForecaster" and initializes the corresponding model
-    raise ValueError(f"Unsupported model: {config.model}")
+    raise ValueError(
+        f"Unsupported model: {config.model}"
+    )
 
 # updates database prediction_experiment table with the new experiment
-def update_prediction_experiment_table(model_type, prediction_target, prediction_horizon,lookback_steps,
-                                       training_samples, validation_samples, test_samples, train_split,
-                                       validation_split, test_split, mae, rmse, r2, persistence_mae, persistence_rmse,
-                                       persistence_r2, moving_average_mae, moving_average_rmse, moving_average_r2,
-                                       linear_trend_mae, linear_trend_rmse, linear_trend_r2):
-    """
-    Updates the prediction_experiment table in the database with the new experiment details.
-    Arguments:
-    - config: The configuration object containing experiment details.
-    - eval_X: The evaluation data used for the experiment.
-    - mae: Mean Absolute Error of the model.
-    - rmse: Root Mean Square Error of the model.
-    - r2: R-squared value of the model.
-    - pers_mae: Mean Absolute Error of the persistence model.
-    - pers_rmse: Root Mean Square Error of the persistence model.
-    - pers_r2: R-squared value of the persistence model.
-    Returns the ID of the newly inserted experiment.
-    """
+def update_prediction_experiment_table(
+        model_type,
+        prediction_target,
 
-    # creates a new instance of the Database class
+        prediction_horizon,
+        lookback_steps,
+
+        epochs,
+        batch_size,
+        learning_rate,
+        dropout,
+        units,
+
+        training_samples,
+        validation_samples,
+        test_samples,
+
+        train_split,
+        validation_split,
+        test_split,
+
+        mae,
+        rmse,
+        r2,
+
+        persistence_mae,
+        persistence_rmse,
+        persistence_r2,
+
+        moving_average_mae,
+        moving_average_rmse,
+        moving_average_r2,
+
+        linear_trend_mae,
+        linear_trend_rmse,
+        linear_trend_r2):
+
     db = Database()
 
     try:
-        # opens a connection to the database
+
         db.openConnection()
 
         experiment_config = json.dumps({
-            "train_split": train_split,
-            "validation_split": validation_split,
-            "test_split": test_split,
+            "train_split":
+                train_split,
 
-            "prediction_horizon": prediction_horizon,
-            "lookback_steps": lookback_steps
+            "validation_split":
+                validation_split,
+
+            "test_split":
+                test_split,
+
+            "prediction_horizon":
+                prediction_horizon,
+
+            "lookback_steps":
+                lookback_steps,
+
+            "epochs":
+                epochs,
+
+            "batch_size":
+                batch_size,
+
+            "learning_rate":
+                learning_rate,
+
+            "dropout":
+                dropout,
+
+            "units":
+                units
         })
 
+        experiment_name = (
+            f"{model_type}_"
+            f"lb{lookback_steps}_"
+            f"h{prediction_horizon}_"
+            f"{datetime.now():%Y%m%d_%H%M%S_%f}"
+        )
 
-        # creates an experiment name
-        experiment_name = (f"{model_type}_{datetime.now():%Y%m%d_%H%M%S}")
+        created_at = (
+            datetime.now().isoformat()
+        )
 
-        # defines the date of creation of the experiment
-        created_at = datetime.now().isoformat()
-
-        # inserts the new experiment details into the prediction_experiments table and retrieves the experiment_id
-        experiment_id, _ = db.insertItemsTable(
-            """
+        experiment_id, _ = (
+            db.insertItemsTable(
+                """
                 INSERT INTO prediction_experiments
                 (
                     experiment_name,
                     model_type,
                     prediction_target,
+
                     prediction_horizon,
                     lookback_steps,
+
+                    epochs,
+                    batch_size,
+                    learning_rate,
+                    dropout,
+                    units,
 
                     training_samples,
                     validation_samples,
@@ -279,7 +309,10 @@ def update_prediction_experiment_table(model_type, prediction_target, prediction
                     created_at,
                     experiment_config
                 )
-                VALUES (
+                VALUES
+                (
+                    ?, ?, ?,
+                    ?, ?,
                     ?, ?, ?, ?, ?,
                     ?, ?, ?,
                     ?, ?, ?,
@@ -289,49 +322,59 @@ def update_prediction_experiment_table(model_type, prediction_target, prediction
                     ?, ?
                 )
                 """,
-            (
-                experiment_name,
-                model_type,
-                prediction_target,
-                prediction_horizon,
-                lookback_steps,
+                (
+                    experiment_name,
+                    model_type,
+                    prediction_target,
 
-                training_samples,
-                validation_samples,
-                test_samples,
+                    prediction_horizon,
+                    lookback_steps,
 
-                mae,
-                rmse,
-                r2,
+                    epochs,
+                    batch_size,
+                    learning_rate,
+                    dropout,
+                    units,
 
-                persistence_mae,
-                persistence_rmse,
-                persistence_r2,
+                    training_samples,
+                    validation_samples,
+                    test_samples,
 
-                moving_average_mae,
-                moving_average_rmse,
-                moving_average_r2,
+                    mae,
+                    rmse,
+                    r2,
 
-                linear_trend_mae,
-                linear_trend_rmse,
-                linear_trend_r2,
-                
-                created_at,
-                experiment_config
+                    persistence_mae,
+                    persistence_rmse,
+                    persistence_r2,
+
+                    moving_average_mae,
+                    moving_average_rmse,
+                    moving_average_r2,
+
+                    linear_trend_mae,
+                    linear_trend_rmse,
+                    linear_trend_r2,
+
+                    created_at,
+                    experiment_config
                 )
+            )
         )
 
-        # returns the experiment_id of the newly inserted experiment
         return experiment_id
 
-    except Exception as e:
+    except Exception as error:
 
-        # prints an error message if there is an exception while updating the prediction_experiment table
-        print(f"Error updating prediction_experiment table: {e}")
+        print(
+            "Error updating prediction experiment table: "
+            f"{error}"
+        )
+
+        return -1
 
     finally:
 
-        # closes the database connection
         db.closeConnection()
 
 # stores prediction samples
@@ -404,9 +447,9 @@ def build_naive_predictions(test_df, target_columns, lookback_steps, horizon):
 
                 series = history[:, j]
 
-                pers_row.append(persistence.predict(series))
-                ma_row.append(moving_average.predict(series))
-                trend_row.append(linear_trend.predict(series))
+                pers_row.append(persistence.predict(series, horizon))
+                ma_row.append(moving_average.predict(series, horizon))
+                trend_row.append(linear_trend.predict(series, horizon))
 
             pers_pred.append(pers_row)
             ma_pred.append(ma_row)
@@ -415,48 +458,128 @@ def build_naive_predictions(test_df, target_columns, lookback_steps, horizon):
             np.asarray(trend_pred,dtype=np.float32))
 
 # buils a one specimen dataset for plotting purposes
-def build_plot_sample(model, test_df, inputs, targets, lookback_steps, horizon, target_scaler):
+def build_plot_samples(
+        eval_test_ids,
+        actual_values,
+        predicted_values,
+        targets,
+        n_samples=3):
 
-    first_test_id = (sorted(test_df["test_id"].unique())[0])
+    if len(eval_test_ids) == 0:
 
-    if test_df.empty:
         return {
-            "test_id": None,
-            "plots": {}
+            "samples": []
         }
 
-    group = test_df[test_df["test_id"] == first_test_id]
+    available_ids = np.unique(
+        eval_test_ids
+    )
+
+    selected_ids = np.random.choice(
+        available_ids,
+        size=min(n_samples, len(available_ids)),
+        replace=False
+    )
+
+    samples = []
+
+    for test_id in selected_ids:
+
+        mask = (
+            eval_test_ids == test_id
+        )
+
+        plots = {}
+
+        for idx, target in enumerate(targets):
+
+            plots[target] = {
+
+                "actual":
+                    actual_values[
+                        mask,
+                        idx
+                    ].tolist(),
+
+                "predicted":
+                    predicted_values[
+                        mask,
+                        idx
+                    ].tolist()
+            }
+
+        samples.append({
+
+            "test_id":
+                int(test_id),
+
+            "plots":
+                plots
+        })
+
+    return {
+        "samples": samples
+    }
+
+
+def build_evaluation_data(
+        test_df_scaled,
+        test_df_unscaled,
+        inputs,
+        targets,
+        lookback_steps,
+        horizon):
 
     eval_X = []
     eval_y = []
+    eval_test_ids = []
 
-    input_values = group[inputs].to_numpy(dtype=np.float32)
+    for test_id in test_df_scaled["test_id"].unique():
 
-    target_values = group[targets].to_numpy(dtype=np.float32)
+        group_scaled = test_df_scaled[
+            test_df_scaled["test_id"] == test_id
+        ]
 
-    for i in range(lookback_steps, len(group) - horizon):
+        group_unscaled = test_df_unscaled[
+            test_df_unscaled["test_id"] == test_id
+        ]
 
-        eval_X.append(input_values[i-lookback_steps:i])
+        n_rows = min(
+            len(group_scaled),
+            len(group_unscaled)
+        )
 
-        eval_y.append(target_values[i+horizon-1])
+        input_values = group_scaled.iloc[:n_rows][
+            inputs
+        ].to_numpy(dtype=np.float32)
 
-    eval_X = np.asarray(eval_X)
-    eval_y = np.asarray(eval_y)
+        target_values = group_unscaled.iloc[:n_rows][
+            targets
+        ].to_numpy(dtype=np.float32)
 
-    predictions = model.predict(eval_X)
-    predictions = (target_scaler.inverse_transform(predictions))
-    eval_y = (target_scaler.inverse_transform(eval_y))
+        for i in range(
+            lookback_steps,
+            n_rows - horizon
+        ):
 
-    plots = {}
+            eval_X.append(
+                input_values[
+                    i-lookback_steps:i
+                ]
+            )
 
-    for idx, target in enumerate(targets):
+            eval_y.append(
+                target_values[
+                    i+horizon-1
+                ]
+            )
 
-        plots[target] = {
-            "actual":eval_y[:,idx].tolist(),
-            "predicted":predictions[:,idx].tolist()
-        }
+            eval_test_ids.append(
+                test_id
+            )
 
-    return {
-        "test_id": int(first_test_id),
-        "plots":plots
-    }
+    return (
+        np.asarray(eval_X, dtype=np.float32),
+        np.asarray(eval_y, dtype=np.float32),
+        np.asarray(eval_test_ids)
+    )

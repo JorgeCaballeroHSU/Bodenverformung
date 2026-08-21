@@ -291,7 +291,7 @@ class Schema(Database):
         );"""
 
         prediction_experiments = """
-            CREATE TABLE IF NOT EXISTS prediction_experiments (
+        CREATE TABLE IF NOT EXISTS prediction_experiments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
 
             feature_set_id INTEGER,
@@ -302,6 +302,12 @@ class Schema(Database):
             prediction_target TEXT,
             prediction_horizon INTEGER,
             lookback_steps INTEGER,
+
+            epochs INTEGER,
+            batch_size INTEGER,
+            learning_rate REAL,
+            dropout REAL,
+            units INTEGER,
 
             training_samples INTEGER,
             validation_samples INTEGER,

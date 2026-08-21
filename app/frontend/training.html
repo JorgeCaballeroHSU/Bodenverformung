@@ -3,46 +3,71 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database Import</title>
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Deformation Prediction</title>
 
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-    
-    <link rel="stylesheet" href="frontend/style/style.css">
-    <link rel="stylesheet" href="frontend/style/style-training.css">
 
+    <link rel="stylesheet" href=/frontend/style/style.css>
+    <link rel="stylesheet" href=/frontend/style/style-training.css>
 </head>
 
 <body>
 
-    <header>
-
-        <img src="frontend/images/Geotechnical Department.png">
-
-        <h1>Deformation Prediction</h1>
-
-        <img src="frontend/images/Uni-Logo.jpeg">
+    <header class="page-header">
+        
+        <img  src="/frontend/images/Geotechnical Department.png">
+        
+            <h1>Deformation Prediction</h1>
+            
+            <img  src= /frontend/images/Uni-Logo.jpeg>
+               
 
     </header>
 
-    <div class="training-container">
+    <main class="training-container">
 
-        <h2>Model Training</h2>
+        <section class="page-introduction">
+            <div>
+
+                <h2>
+                    Model Training and Hyperparameter Search
+                </h2>
+
+            </div>
+
+            <div id="trainingStatus" class="status-indicator status-idle">
+
+            </div>
+
+        </section>
 
         <div class="training-layout">
 
-            <!-- CONFIGURATION PANEL -->
+            <!-- ===================================================== -->
+            <!-- CONFIGURATION PANEL                                   -->
+            <!-- ===================================================== -->
 
-            <div class="configuration-panel">
+            <aside class="configuration-panel">
 
                 <h3>Model Configuration</h3>
 
                 <div class="form-group">
-                    <label for="modelSelect">Prediction Model</label>
+
+                    <label for="modelSelect">
+                        Prediction Model
+                    </label>
 
                     <select id="modelSelect">
 
-                        <option value="LSTMForecaster">LSTM</option>
+                        <option value="LSTMForecaster">
+                            LSTM
+                        </option>
 
                         <option value="StackedLSTMForecaster">
                             Stacked LSTM
@@ -50,14 +75,6 @@
 
                         <option value="BiLSTMForecaster">
                             Bidirectional LSTM
-                        </option>
-
-                        <option value="EncoderDecoderLSTMForecaster">
-                            Encoder Decoder LSTM
-                        </option>
-
-                        <option value="Seq2SeqAttentionLSTMForecaster">
-                            Seq2Seq Attention LSTM
                         </option>
 
                         <option value="CNNLSTMForecaster">
@@ -72,268 +89,747 @@
                             DeepAR
                         </option>
 
-                        <option value="TFTForecaster">
-                            Temporal Fusion Transformer
-                        </option>
-
                     </select>
 
                 </div>
 
+                <h3>Forecast Configuration</h3>
+
                 <div class="form-group">
-                    <label>Input Lookback Steps</label>
+
+                    <label for="lookbackSteps">
+                        Input Lookback Steps
+                    </label>
+
                     <input
-                        type="number"
+                        type="text"
                         id="lookbackSteps"
-                        min="1"
-                        value="10">
+                        value="20"
+                        placeholder="Example: 10,20,30"
+                    >
+
+                    <small>
+                        Comma-separated integer values.
+                    </small>
+
                 </div>
 
                 <div class="form-group">
-                    <label>Forecast Horizon</label>
+
+                    <label for="forecastHorizons">
+                        Forecast Horizons
+                    </label>
+
                     <input
-                        type="number"
-                        id="forecastHorizon"
-                        min="1"
-                        value="1">
+                        type="text"
+                        id="forecastHorizons"
+                        value="15"
+                        placeholder="Example: 1,5,10,15"
+                    >
+
+                    <small>
+                        Comma-separated integer values.
+                    </small>
+
                 </div>
 
                 <h3>Time Series Inputs</h3>
 
-                <div id="timeseriesFeatures">
+                <div
+                    id="timeseriesFeatures"
+                    class="checkbox-panel"
+                >
 
-                    <label><input type="checkbox" value="force_kn"> Force (kN)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="force_kn"
+                        >
+                        Force (kN)
+                    </label>
 
-                    <label><input type="checkbox" value="displacement_mm"> Displacement (mm)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="displacement_mm"
+                        >
+                        Displacement (mm)
+                    </label>
 
-                    <label><input type="checkbox" value="sample_height_mm"> Sample Height (mm)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="sample_height_mm"
+                        >
+                        Sample Height (mm)
+                    </label>
 
-                    <label><input type="checkbox" value="strain_ratio"> Strain Ratio</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="strain_ratio"
+                        >
+                        Strain Ratio
+                    </label>
 
-                    <label><input type="checkbox" value="strain_pct"> Strain (%)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="strain_pct"
+                        >
+                        Strain (%)
+                    </label>
 
-                    <label><input type="checkbox" value="stress_kpa"> Stress (kPa)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="stress_kpa"
+                        >
+                        Stress (kPa)
+                    </label>
 
                 </div>
 
                 <h3>Static Sample Features</h3>
 
-                <div id="staticFeatures">
+                <div
+                    id="staticFeatures"
+                    class="checkbox-panel"
+                >
 
-                    <label><input type="checkbox" value="water_content"> Water Content  (%)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="water_content"
+                        >
+                        Water Content (%)
+                    </label>
 
-                    <label><input type="checkbox" value="density_kg_m3"> Density (kg/m³)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="density_kg_m3"
+                        >
+                        Density (kg/m³)
+                    </label>
 
-                    <label><input type="checkbox" value="initial_mass_kg"> Initial Mass (kg)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="initial_mass_kg"
+                        >
+                        Initial Mass (kg)
+                    </label>
 
                 </div>
 
                 <h3>Prediction Targets</h3>
 
-                <div id="targetFeatures">
+                <div
+                    id="targetFeatures"
+                    class="checkbox-panel"
+                >
 
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="force_kn"
+                        >
+                        Force (kN)
+                    </label>
 
-                        <label><input type="checkbox" value="force_kn"> Force (kN)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="displacement_mm"
+                        >
+                        Displacement (mm)
+                    </label>
 
-                        <label><input type="checkbox" value="displacement_mm"> Displacement (mm)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="sample_height_mm"
+                        >
+                        Sample Height (mm)
+                    </label>
 
-                        <label><input type="checkbox" value="sample_height_mm"> Sample Height (mm)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="strain_ratio"
+                        >
+                        Strain Ratio
+                    </label>
 
-                        <label><input type="checkbox" value="strain_ratio"> Strain Ratio</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="strain_pct"
+                        >
+                        Strain (%)
+                    </label>
 
-                        <label><input type="checkbox" value="strain_pct"> Strain (%)</label>
-
-                        <label><input type="checkbox" value="stress_kpa"> Stress (kPa)</label>
+                    <label>
+                        <input
+                            type="checkbox"
+                            value="stress_kpa"
+                        >
+                        Stress (kPa)
+                    </label>
 
                 </div>
 
                 <h3>Dataset Split</h3>
 
-                <div class="form-group">
-                    <label>Training (%)</label>
+                <div class="three-column-grid">
 
-                    <input
-                        type="number"
-                        id="trainSplit"
-                        value="70"
-                        min="10"
-                        max="90">
+                    <div class="form-group">
+
+                        <label for="trainSplit">
+                            Training (%)
+                        </label>
+
+                        <input
+                            type="number"
+                            id="trainSplit"
+                            value="70"
+                            min="1"
+                            max="98"
+                        >
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="validationSplit">
+                            Validation (%)
+                        </label>
+
+                        <input
+                            type="number"
+                            id="validationSplit"
+                            value="15"
+                            min="1"
+                            max="98"
+                        >
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="testSplit">
+                            Testing (%)
+                        </label>
+
+                        <input
+                            type="number"
+                            id="testSplit"
+                            value="15"
+                            min="1"
+                            max="98"
+                        >
+
+                    </div>
+
                 </div>
 
-                <div class="form-group">
-                    <label>Validation (%)</label>
-
-                    <input
-                        type="number"
-                        id="validationSplit"
-                        value="15"
-                        min="0"
-                        max="40">
-                </div>
-
-                <div class="form-group">
-                    <label>Testing (%)</label>
-
-                    <input
-                        type="number"
-                        id="testSplit"
-                        value="15"
-                        min="0"
-                        max="40">
-                </div>
-
-                <div class="form-group">
-                    <small>
-                        Train + Validation + Test must equal 100%.
-                    </small>
-                </div>
+                <small>
+                    Training + validation + testing must equal 100%.
+                </small>
 
                 <h3>Basic Hyperparameters</h3>
 
                 <div class="form-group">
-                    <label>Epochs</label>
-                    <input
-                        type="number"
-                        id="epochs"
-                        value="100">
-                </div>
 
-                <div class="form-group">
-                    <label>Batch Size</label>
-                    <input
-                        type="number"
-                        id="batchSize"
-                        value="32">
-                </div>
-
-                <div class="form-group">
-                    <label>Learning Rate</label>
-                    <input
-                        type="number"
-                        id="learningRate"
-                        value="0.001"
-                        step="0.0001">
-                </div>
-
-                <div class="form-group">
-                    <label>Dropout</label>
-                    <input
-                        type="number"
-                        id="dropout"
-                        value="0.20"
-                        step="0.05">
-                </div>
-
-                <div class="form-group">
-                    <label>LSTM / GRU Units</label>
-                    <input
-                        type="number"
-                        id="units"
-                        value="64">
-                </div>
-
-                <button id="trainButton">
-                    Train Model
-                </button>
-
-            </div>
-
-            <!-- RESULTS PANEL -->
-
-            <div class="results-panel">
-
-                <h3>Performance Summary</h3>
-
-                <div class="metrics-grid">
-
-                    <div class="metric-card">
-                        <span>MAE</span>
-                        <h2 id="maeValue">-</h2>
-                    </div>
-
-                    <div class="metric-card">
-                        <span>RMSE</span>
-                        <h2 id="rmseValue">-</h2>
-                    </div>
-
-                    <div class="metric-card">
-                        <span>R²</span>
-                        <h2 id="r2Value">-</h2>
-                    </div>
-
-                </div>
-
-                <h3>Benchmark Comparison</h3>
-
-                <table id="benchmarkTable">
-
-                    <thead>
-                        <tr>
-                            <th>Model</th>
-                            <th>MAE</th>
-                            <th>RMSE</th>
-                            <th>R²</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-
-                        <tr>
-                            <td>Selected Model</td>
-                            <td id="modelMae">-</td>
-                            <td id="modelRmse">-</td>
-                            <td id="modelR2">-</td>
-                        </tr>
-
-                        <tr>
-                            <td>Persistence</td>
-                            <td id="persMae">-</td>
-                            <td id="persRmse">-</td>
-                            <td id="persR2">-</td>
-                        </tr>
-
-                        <tr>
-                            <td>Moving Average</td>
-                            <td id="maMae">-</td>
-                            <td id="maRmse">-</td>
-                            <td id="maR2">-</td>
-                        </tr>
-
-                        <tr>
-                            <td>Linear Trend</td>
-                            <td id="trendMae">-</td>
-                            <td id="trendRmse">-</td>
-                            <td id="trendR2">-</td>
-                        </tr>
-
-                    </tbody>
-
-                </table>
-
-
-                <h3>Prediction Results</h3>
-
-                <div class="plot-controls">
-
-                    <label for="plotTarget">
-                        Prediction Target
+                    <label for="epochs">
+                        Epochs
                     </label>
 
-                    <select id="plotTarget"></select>
+                    <input
+                        type="text"
+                        id="epochs"
+                        value="2"
+                        placeholder="Example: 2,5,10"
+                    >
 
                 </div>
 
-                <div id="predictionPlot"></div>
+                <div class="form-group">
 
-                <h3>Training History</h3>
+                    <label for="batchSizes">
+                        Batch Sizes
+                    </label>
 
-                <div id="trainingHistoryPlot"></div>
+                    <input
+                        type="text"
+                        id="batchSizes"
+                        value="32"
+                        placeholder="Example: 32,64,128"
+                    >
 
-            </div>
+                </div>
+
+                <div class="form-group">
+
+                    <label for="learningRates">
+                        Learning Rates
+                    </label>
+
+                    <input
+                        type="text"
+                        id="learningRates"
+                        value="0.001"
+                        placeholder="Example: 0.001,0.0005"
+                    >
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="dropouts">
+                        Dropout Values
+                    </label>
+
+                    <input
+                        type="text"
+                        id="dropouts"
+                        value="0.2"
+                        placeholder="Example: 0.1,0.2,0.3"
+                    >
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="units">
+                        LSTM / GRU Units
+                    </label>
+
+                    <input
+                        type="text"
+                        id="units"
+                        value="64"
+                        placeholder="Example: 32,64,128"
+                    >
+
+                </div>
+
+                <div class="experiment-count-panel">
+
+                    <span>
+                        Number of experiments
+                    </span>
+
+                    <strong id="experimentCount">
+                        1
+                    </strong>
+
+                </div>
+
+                <button
+                    id="trainButton"
+                    type="button"
+                >
+                    Start Experiment Grid
+                </button>
+
+                <div
+                    id="trainingMessage"
+                    class="training-message"
+                ></div>
+
+            </aside>
+
+            <!-- ===================================================== -->
+            <!-- RESULTS PANEL                                         -->
+            <!-- ===================================================== -->
+
+            <section class="results-panel">
+
+                <section class="result-section">
+
+                    <div class="section-heading">
+
+                        <div>
+
+                            <span class="section-code">
+                                OPTIMAL CONFIGURATION
+                            </span>
+
+                            <h3>Best Experiment</h3>
+
+                        </div>
+
+                        <span
+                            id="bestExperimentId"
+                            class="experiment-id"
+                        >
+                            Experiment —
+                        </span>
+
+                    </div>
+
+                    <div class="best-configuration-grid">
+
+                        <div class="configuration-value">
+
+                            <span>Model</span>
+
+                            <strong id="bestModel">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="configuration-value">
+
+                            <span>Lookback</span>
+
+                            <strong id="bestLookback">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="configuration-value">
+
+                            <span>Horizon</span>
+
+                            <strong id="bestHorizon">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="configuration-value">
+
+                            <span>Epochs</span>
+
+                            <strong id="bestEpochs">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="configuration-value">
+
+                            <span>Batch Size</span>
+
+                            <strong id="bestBatchSize">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="configuration-value">
+
+                            <span>Learning Rate</span>
+
+                            <strong id="bestLearningRate">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="configuration-value">
+
+                            <span>Dropout</span>
+
+                            <strong id="bestDropout">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="configuration-value">
+
+                            <span>Units</span>
+
+                            <strong id="bestUnits">
+                                —
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <section class="result-section">
+
+                    <div class="section-heading">
+
+                        <div>
+
+                            <span class="section-code">
+                                MODEL PERFORMANCE
+                            </span>
+
+                            <h3>Performance Summary</h3>
+
+                        </div>
+
+                    </div>
+
+                    <div class="metrics-grid">
+
+                        <div class="metric-card">
+
+                            <span>MAE</span>
+
+                            <strong id="maeValue">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="metric-card">
+
+                            <span>RMSE</span>
+
+                            <strong id="rmseValue">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div class="metric-card">
+
+                            <span>R²</span>
+
+                            <strong id="r2Value">
+                                —
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <section class="result-section">
+
+                    <div class="section-heading">
+
+                        <div>
+
+                            <span class="section-code">
+                                BEST RUN
+                            </span>
+
+                            <h3>Benchmark Comparison</h3>
+
+                        </div>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table id="benchmarkTable">
+
+                            <thead>
+
+                                <tr>
+                                    <th>Model</th>
+                                    <th>MAE</th>
+                                    <th>RMSE</th>
+                                    <th>R²</th>
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                <tr class="selected-model-row">
+                                    <td>Selected ANN</td>
+                                    <td id="modelMae">—</td>
+                                    <td id="modelRmse">—</td>
+                                    <td id="modelR2">—</td>
+                                </tr>
+
+                                <tr>
+                                    <td>Persistence</td>
+                                    <td id="persMae">—</td>
+                                    <td id="persRmse">—</td>
+                                    <td id="persR2">—</td>
+                                </tr>
+
+                                <tr>
+                                    <td>Moving Average</td>
+                                    <td id="maMae">—</td>
+                                    <td id="maRmse">—</td>
+                                    <td id="maR2">—</td>
+                                </tr>
+
+                                <tr>
+                                    <td>Linear Trend</td>
+                                    <td id="trendMae">—</td>
+                                    <td id="trendRmse">—</td>
+                                    <td id="trendR2">—</td>
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </section>
+
+                <!-- ================================================= -->
+                <!-- GRID-SEARCH COMPARISON CHARTS                     -->
+                <!-- ================================================= -->
+
+                <section class="result-section">
+
+                    <div class="section-heading">
+
+                        <div>
+
+                            <span class="section-code">
+                                ALL COMPLETED EXPERIMENTS
+                            </span>
+
+                            <h3>MAE: ANN vs Naive Benchmarks</h3>
+
+                        </div>
+
+                    </div>
+
+                    <p class="chart-explanation">
+                        Points below the equality line indicate that the ANN
+                        has a lower MAE than the corresponding benchmark.
+                    </p>
+
+                    <div
+                        id="maeComparisonPlot"
+                        class="comparison-plot"
+                    ></div>
+
+                </section>
+
+                <section class="result-section">
+
+                    <div class="section-heading">
+
+                        <div>
+
+                            <span class="section-code">
+                                ALL COMPLETED EXPERIMENTS
+                            </span>
+
+                            <h3>RMSE: ANN vs Naive Benchmarks</h3>
+
+                        </div>
+
+                    </div>
+
+                    <p class="chart-explanation">
+                        Points below the equality line indicate that the ANN
+                        has a lower RMSE than the corresponding benchmark.
+                    </p>
+
+                    <div
+                        id="rmseComparisonPlot"
+                        class="comparison-plot"
+                    ></div>
+
+                </section>
+
+                <section class="result-section">
+
+                    <div class="section-heading">
+
+                        <div>
+
+                            <span class="section-code">
+                                ALL COMPLETED EXPERIMENTS
+                            </span>
+
+                            <h3>R²: ANN vs Naive Benchmarks</h3>
+
+                        </div>
+
+                    </div>
+
+                    <p class="chart-explanation">
+                        Points above the equality line indicate that the ANN
+                        has a higher R² than the corresponding benchmark.
+                    </p>
+
+                    <div
+                        id="r2ComparisonPlot"
+                        class="comparison-plot"
+                    ></div>
+
+                </section>
+
+                <!-- ================================================= -->
+                <!-- BEST EXPERIMENT DETAIL                            -->
+                <!-- ================================================= -->
+
+                <section class="result-section">
+
+                    <div class="section-heading">
+
+                        <div>
+
+                            <span class="section-code">
+                                BEST EXPERIMENT
+                            </span>
+
+                            <h3>Prediction Results</h3>
+
+                        </div>
+
+                    </div>
+
+                    <div class="plot-controls">
+
+                        <label for="plotTarget">
+                            Prediction Target
+                        </label>
+
+                        <select id="plotTarget"></select>
+
+                    </div>
+
+                    <div
+                        id="predictionPlots"
+                        class="prediction-plot"
+                    ></div>
+
+                </section>
+
+                <section class="result-section">
+
+                    <div class="section-heading">
+
+                        <div>
+
+                            <span class="section-code">
+                                BEST EXPERIMENT
+                            </span>
+
+                            <h3>Training History</h3>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        id="trainingHistoryPlot"
+                        class="training-history-plot"
+                    ></div>
+
+                </section>
+
+            </section>
 
         </div>
 
-    </div>
+    </main>
 
     <footer id="footer">
 
@@ -341,8 +837,8 @@
             <strong>Supervisor</strong><br>
             Sascha Henke<br>
             Univ.-Prof. Dr.-Ing. habil.<br>
-            📧 sascha.henke@hsu-hh.de<br>
-            📞 +49 40 6541-3351
+            sascha.henke@hsu-hh.de<br>
+            +49 40 6541-3351
         </div>
 
         <div class="footer-center">
@@ -352,16 +848,17 @@
         <div class="footer-right">
             <strong>Research Associate</strong><br>
             Jorge Enrique Caballero Castillo<br>
-            M.Sc. AI, M.Sc. Geology,<br>
-            B.Sc. Computer Science,<br>
+            M.Sc. AI, M.Sc. Geology<br>
+            B.Sc. Computer Science<br>
             B.Sc. Geotechnical Engineering<br>
-            📧 caballej@hsu-hh.de<br>
-            📞 +49 40 6541-2927
+            caballej@hsu-hh.de<br>
+            +49 40 6541-2927
         </div>
 
     </footer>
 
-    <script src="/frontend/javascript/script-training.js"></script>
+    <script src=/frontend/javascript/script-training.js></script>
 
 </body>
+
 </html>

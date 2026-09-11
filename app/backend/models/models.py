@@ -314,6 +314,7 @@ class DeepARForecaster(BaseModel):
 
         self.model.compile(optimizer=Adam(learning_rate=self.learning_rate), loss="mse", metrics=["mae"])
 
+# Temporal Fusion Transformer
 class TFTForecaster(BaseModel):
 
     def __init__(self, horizon: int, input_size: int, n_targets: int, hidden_size: int = 64):

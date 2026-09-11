@@ -1,87 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GrainLens Dashboard</title>
-    <link rel="stylesheet" href="frontend/style/style.css">
-    
-</head>
-
-
-<body>
-
-    <header>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>GrainLens Dashboard</title>
+        <link rel="stylesheet" href="frontend/style/style.css">
         
-        <img src="frontend/images/Geotechnical Department.png">
+    </head>
 
-        <h1>Deformation Prediction</h1>
+    <body>
 
-        <img src="frontend/images/Uni-Logo.jpeg">
-    </header>
-
-    <main>
-
-        <h2>Choose an Option</h2>
-
-        <div class="container">
-
-            <div class="card" onclick="navigateTo('/database')">
-                <img src="frontend/images/database.png" alt="Database">
-
-                <div class="card-title">
-                    Select Files / Folders for Database
-                </div>
+        <header class="page-header">
+            
+            <img src="frontend/images/Geotechnical Department.png">
+            
+            <div class="header-title">
+                <h1>Deformation Prediction</h1>
+                <p>Geotechnical Data Analysis Platform</p>
             </div>
 
-            <div class="card" onclick="navigateTo('/training')">
-                <img src="frontend/images/training.png" alt="Training">
+            <img  src="frontend/images/Uni-Logo.jpeg">
+        </header>
 
-                <div class="card-title">
-                    Training
+        <main class="home-container">
+
+            <section class="page-introduction">
+
+                <div>
+                    <span class="section-code">APPLICATION MODULES</span>
+                    <h2>Choose an Option</h2>
                 </div>
+
+            </section>
+
+            <div class="container">
+
+                <div class="card" onclick="navigateTo('/database')">
+                    <img src="frontend/images/database.png" alt="Database">
+
+                    <div class="card-content">
+                        <span class="card-code">DATA MANAGEMENT</span>
+                        <h3>Database</h3>
+                        <p>Select, import, inspect and summarize laboratory files.</p>
+                    </div>
+                </div>
+
+                <div class="card" onclick="navigateTo('/training')">
+                    <img src="frontend/images/training.png" alt="Training">
+
+                    <div class="card-content">
+                        <span class="card-code">MODEL DEVELOPMENT</span>
+                        <h3>Training</h3>
+                        <p>Configure, train and compare forecasting experiments.</p>
+                    </div>
+                </div>
+
+                <div class="card" onclick="navigateTo('/prediction')">
+                    <img src="frontend/images/prediction.png" alt="Prediction">
+
+                    <div class="card-content">
+                        <span class="card-code">MODEL APPLICATION</span>
+                        <h3>Prediction</h3>
+                        <p>Apply trained models to new laboratory measurements.</p>
+                    </div>
+                </div>
+
             </div>
 
-            <div class="card" onclick="navigateTo('/prediction')">
-                <img src="frontend/images/prediction.png" alt="Prediction">
+        </main>
 
-                <div class="card-title">
-                    Prediction
-                </div>
+        <footer id="footer">
+            <div class="footer-left">
+                <strong>Supervisor</strong><br>
+                Sascha Henke<br>
+                Univ.-Prof. Dr.-Ing. habil.<br>
+                📧 sascha.henke@hsu-hh.de<br>
+                📞 +49 40 6541-3351
             </div>
 
-        </div>
+            <div class="footer-center">
+                Vorhersagbarkeit von Bodenverformungen
+            </div>
 
-    </main>
+            <div class="footer-right">
+                <strong>Research Associate</strong><br>
+                Jorge Enrique Caballero Castillo<br>
+                M.Sc. AI, M.Sc. Geology,<br>
+                B.Sc. Computer Science,<br>
+                B.Sc. Geotechnical Engineering<br>
+                📧 caballej@hsu-hh.de<br>
+                📞 +49 40 6541-2927
+            </div>
+        </footer>
+    <script src="frontend/javascript/script.js">
 
-    <footer id="footer">
-        <div class="footer-left">
-            <strong>Supervisor</strong><br>
-            Sascha Henke<br>
-            Univ.-Prof. Dr.-Ing. habil.<br>
-            📧 sascha.henke@hsu-hh.de<br>
-            📞 +49 40 6541-3351
-        </div>
+    </script>
+        
 
-        <div class="footer-center">
-            Vorhersagbarkeit von Bodenverformungen
-        </div>
-
-        <div class="footer-right">
-            <strong>Research Associate</strong><br>
-            Jorge Enrique Caballero Castillo<br>
-            M.Sc. AI, M.Sc. Geology,<br>
-            B.Sc. Computer Science,<br>
-            B.Sc. Geotechnical Engineering<br>
-            📧 caballej@hsu-hh.de<br>
-            📞 +49 40 6541-2927
-        </div>
-    </footer>
-<script src="frontend/javascript/script.js">
-
-</script>
-    
-
-</body>
+    </body>
 </html>

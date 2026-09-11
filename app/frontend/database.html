@@ -1,167 +1,187 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database Import</title>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Database Import</title>
 
-    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-    
-    <link rel="stylesheet" href="frontend/style/style.css">
-    <link rel="stylesheet" href="frontend/style/style-db.css">
+        <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+        
+        <link rel="stylesheet" href="frontend/style/style.css">
+        <link rel="stylesheet" href="frontend/style/style-db.css">
 
-</head>
+    </head>
 
-<body>
+    <body>
 
-<header>
+        <header>
 
-    <img src="frontend/images/Geotechnical Department.png">
+            <img src="frontend/images/Geotechnical Department.png">
 
-    <h1>Deformation Prediction</h1>
+            <h1>Deformation Prediction</h1>
 
-    <img src="frontend/images/Uni-Logo.jpeg">
+            <img src="frontend/images/Uni-Logo.jpeg">
 
-</header>
+        </header>
 
-<div class="explorer-container">
+        <main class="database-container">
 
-    <h2>Select Folder</h2>
+           <section class="page-introduction">
 
-    <div class="folder-selection">
-
-        <input
-            type="file"
-            id="folderPicker"
-            webkitdirectory
-            directory
-            multiple>
-
-    </div>
-
-    <br>
-
-    <div id="folderInfo">
-
-        <p>No folder selected.</p>
-
-    </div>
-
-    <br>
-
-    <div class="dashboard-layout">
-
-        <!-- LEFT COLUMN -->
-
-        <div class="files-panel">
-
-            <table id="fileTable">
-
-                <thead>
-                    <tr>
-                        <th>Select</th>
-                        <th>File Name</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-
-                <tbody id="fileBody">
-                    <!-- Filled by JS -->
-                </tbody>
-
-            </table>
-
-        </div>
-
-        <!-- RIGHT COLUMN -->
-
-        <div class="stats-panel">
-
-            <h3>Database Summary</h3>
-
-            <div class="kpi-container">
-
-                <div class="kpi-card">
-                    <span>Total Tests</span>
-                    <h2 id="totalTests">-</h2>
+                <div>
+                    <span class="section-code">DATA MANAGEMENT</span>
+                    <h2>Database Import and Summary</h2>
                 </div>
 
-                <div class="kpi-card">
-                    <span>Total Measurements</span>
-                    <h2 id="totalMeasurements">-</h2>
+                <div id="databaseStatus" class="database-status">
+                    Database
                 </div>
 
-                <div class="kpi-card">
-                    <span>Avg Stress (kPa)</span>
-                    <h2 id="avgStress">-</h2>
+            </section>
+
+            <section class="explorer-container">
+
+                <div class="section-heading">
+                    <div>
+                        <span class="section-code">FILE IMPORT</span>
+                        <h3>Select Folder</h3>
+                    </div>
                 </div>
 
-                <div class="kpi-card">
-                    <span>Max Force (kN)</span>
-                    <h2 id="maxForce">-</h2>
+                <div class="folder-selection">
+
+                    <input
+                        type="file"
+                        id="folderPicker"
+                        webkitdirectory
+                        directory
+                        multiple>
+
                 </div>
 
+                <br>
+
+                <div id="folderInfo">
+
+                    <p>No folder selected.</p>
+
+                </div>
+
+                <br>
+
+                <div class="dashboard-layout">
+
+                    <!-- LEFT COLUMN -->
+
+                    <div class="files-panel">
+
+                        <table id="fileTable">
+
+                            <thead>
+                                <tr>
+                                    <th>Select</th>
+                                    <th>File Name</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="fileBody">
+                                <!-- Filled by JS -->
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                    <!-- RIGHT COLUMN -->
+
+                    <div class="stats-panel">
+
+                        <h3>Database Summary</h3>
+
+                        <div class="kpi-container">
+
+                            <div class="kpi-card">
+                                <span>Total Tests</span>
+                                <h2 id="totalTests">-</h2>
+                            </div>
+
+                            <div class="kpi-card">
+                                <span>Total Measurements</span>
+                                <h2 id="totalMeasurements">-</h2>
+                            </div>
+
+                            <div class="kpi-card">
+                                <span>Avg Stress (kPa)</span>
+                                <h2 id="avgStress">-</h2>
+                            </div>
+
+                            <div class="kpi-card">
+                                <span>Max Force (kN)</span>
+                                <h2 id="maxForce">-</h2>
+                            </div>
+
+                        </div>
+
+                        <div id="stressStrainPlot"></div>
+
+                    </div>
+
+                </div>
+
+                <br>
+
+                <div class="plots-section">
+
+                    <div id="forceDisplacementPlot"></div>
+
+                    <div id="stressHistogram"></div>
+
+                    <div id="strainHistogram"></div>
+
+                    <div id="summaryTable"></div>
+
+                    <div id="correlationMatrix"></div>
+
+                </div>
+
+                <br>
+
+                <button id="uploadButton">
+                    Import Selected Files
+                </button>
+
+            </section>
+        </main>    
+
+        <footer id="footer">
+
+            <div class="footer-left">
+                <strong>Supervisor</strong><br>
+                Sascha Henke<br>
+                Univ.-Prof. Dr.-Ing. habil.<br>
+                📧 sascha.henke@hsu-hh.de<br>
+                📞 +49 40 6541-3351
             </div>
 
-            <div id="stressStrainPlot"></div>
+            <div class="footer-center">
+                Vorhersagbarkeit von Bodenverformungen
+            </div>
 
-        </div>
+            <div class="footer-right">
+                <strong>Research Associate</strong><br>
+                Jorge Enrique Caballero Castillo<br>
+                M.Sc. AI, M.Sc. Geology,<br>
+                B.Sc. Computer Science,<br>
+                B.Sc. Geotechnical Engineering<br>
+                📧 caballej@hsu-hh.de<br>
+                📞 +49 40 6541-2927
+            </div>
 
-    </div>
+        </footer>
 
-    <br>
+        <script src="/frontend/javascript/script-db.js"></script>
 
-    <div class="plots-section">
-
-        <div id="forceDisplacementPlot"></div>
-
-        <div id="stressHistogram"></div>
-
-        <div id="strainHistogram"></div>
-
-        <div id="summaryTable"></div>
-
-        <div id="correlationMatrix"></div>
-
-    </div>
-
-    <br>
-
-    <button id="uploadButton">
-        Import Selected Files
-    </button>
-
-
-    </div>
-
-<footer id="footer">
-
-    <div class="footer-left">
-        <strong>Supervisor</strong><br>
-        Sascha Henke<br>
-        Univ.-Prof. Dr.-Ing. habil.<br>
-        📧 sascha.henke@hsu-hh.de<br>
-        📞 +49 40 6541-3351
-    </div>
-
-    <div class="footer-center">
-        Vorhersagbarkeit von Bodenverformungen
-    </div>
-
-    <div class="footer-right">
-        <strong>Research Associate</strong><br>
-        Jorge Enrique Caballero Castillo<br>
-        M.Sc. AI, M.Sc. Geology,<br>
-        B.Sc. Computer Science,<br>
-        B.Sc. Geotechnical Engineering<br>
-        📧 caballej@hsu-hh.de<br>
-        📞 +49 40 6541-2927
-    </div>
-
-</footer>
-
-<script src="/frontend/javascript/script-db.js"></script>
-
-</body>
+    </body>
 </html>
